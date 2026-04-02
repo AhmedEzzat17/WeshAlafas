@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #2E7D32;
+  --color-primary-dark: #14532D;
+  --color-accent: #81C784;
+  --color-cta: #F9A825;
+  --color-flash: #F97316;
+  --color-bg: #F7F7F7;
+  --color-surface: #FFFFFF;
+  --color-text-main: #333333;
+  --color-text-muted: #6B7280;
+  --color-dark-bg: #0f172a;
+}
+
+/* ===================================
+   Global Styles & Custom Properties
+   =================================== */
+
+:root {
+  /* Primary brand colors */
+  --color-primary: #2E7D32;
+  --color-primary-dark: #14532D;
+  --color-primary-light: #81C784;
+  --color-accent: #81C784;
+
+  /* Action/CTA Colors */
+  --color-cta: #F9A825;
+  --color-flash: #F97316;
+
+  /* Neutral palette */
+  --color-bg: #F7F7F7;
+  --color-surface: #FFFFFF;
+  --color-text: #333333;
+  --color-text-muted: #6B7280;
+  --color-border: #E2E8F0;
+
+  /* Footer / Dark elements */
+  --color-dark-bg: #0f172a;
+}
+
+/* ===================================
+   Base Reset & Defaults
+   =================================== */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+}
+
+body {
+  font-family: 'Inter', 'Cairo', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* RTL support - Arabic font priority */
+[dir="rtl"] body,
+[dir="rtl"] {
+  font-family: 'Cairo', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ===================================
+   Root container setup (Center on large screens)
+   =================================== */
+#root {
+  min-height: 100vh;
+  max-width: 1920px;
+  margin: 0 auto;
+  position: relative;
+  background-color: var(--color-bg);
+  box-shadow: 0 0 40px rgba(0,0,0,0.03);
+}
+
+/* ===================================
+   Scrollbar Styles
+   =================================== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-dark);
+}
+
+/* ===================================
+   Focus Styles for Accessibility
+   =================================== */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ===================================
+   Selection Styles
+   =================================== */
+::selection {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+/* ===================================
+   Fix search input styling
+   =================================== */
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+}
+
+/* ===================================
+   Utility classes
+   =================================== */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
