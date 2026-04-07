@@ -719,7 +719,7 @@ export default function LoginPage() {
               >
                 {isRTL ? "ليس لديك حساب؟ " : "Don't have an account? "}
                 <Link
-                  to="/register"
+                  to="/account-type"
                   style={{
                     fontWeight: 700,
                     color: "#2E7D32",

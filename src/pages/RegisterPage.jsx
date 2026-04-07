@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logo.png";
@@ -70,19 +70,51 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const isRTL = direction === "rtl";
 
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const typeParam = searchParams.get("type") || "farmer"; // Default to farmer if none specified
+
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     phone: "",
     password: "",
     confirmPassword: "",
-    account_type: "FARMER",
+    account_type: typeParam.toUpperCase(),
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
   const [error, setError] = useState("");
+
+  const getPageTitle = () => {
+    if (isRTL) {
+      if (typeParam === "farmer") return "إنشاء حساب مزارع";
+      if (typeParam === "trader") return "إنشاء حساب تاجر";
+      if (typeParam === "entity") return "إنشاء حساب منشأة";
+      return "إنشاء حساب جديد";
+    } else {
+      if (typeParam === "farmer") return "Farmer Registration";
+      if (typeParam === "trader") return "Trader Registration";
+      if (typeParam === "entity") return "Entity Registration";
+      return "Create New Account";
+    }
+  };
+
+  const getPageDesc = () => {
+    if (isRTL) {
+      if (typeParam === "farmer") return "سجّل الآن كمنتج وابدأ في عرض محاصيلك";
+      if (typeParam === "trader") return "سجّل الآن كتاجر واحصل على أفضل المنتجات من المزارع";
+      if (typeParam === "entity") return "سجّل منشأتك لتسهيل عمليات التوريد والشراء الكبيرة";
+      return "سجّل الآن واستمتع بتجربة تسوق مميزة";
+    } else {
+      if (typeParam === "farmer") return "Join as a producer and showcase your crops";
+      if (typeParam === "trader") return "Join as a trader and get products directly from farms";
+      if (typeParam === "entity") return "Register your entity for large-scale supply and purchase";
+      return "Register now and enjoy a unique shopping experience";
+    }
+  };
 
   const handleChange = (field) => (e) => {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
@@ -91,12 +123,31 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    
+    // Basic validations
+    if (!formData.fullName) {
+      setError(isRTL ? "يرجى إدخال الاسم الكامل" : "Please enter full name");
+      setFocusedField("fullName");
+      return;
+    }
+    if (!formData.email) {
+      setError(isRTL ? "يرجى إدخال البريد الإلكتروني" : "Please enter email");
+      setFocusedField("email");
+      return;
+    }
+    if (!formData.phone) {
+      setError(isRTL ? "يرجى إدخال رقم الهاتف" : "Please enter phone number");
+      setFocusedField("phone");
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       setError(isRTL ? "كلمات المرور غير متطابقة" : "Passwords do not match");
+      setFocusedField("confirmPassword");
       return;
     }
     if (formData.password.length < 8) {
       setError(isRTL ? "كلمة المرور يجب أن تكون 8 أحرف على الأقل" : "Password must be at least 8 characters");
+      setFocusedField("password");
       return;
     }
 
@@ -108,7 +159,12 @@ export default function RegisterPage() {
         navigate("/");
       }
     } else {
-      setError(result.error || (isRTL ? "حدث خطأ أثناء إنشاء الحساب" : "An error occurred during registration"));
+      // Map API errors to readable messages
+      const apiError = result.error || (isRTL ? "حدث خطأ أثناء إنشاء الحساب" : "An error occurred during registration");
+      setError(apiError);
+      
+      // Visual feedback: Alert the user
+      window.alert(isRTL ? `خطأ: ${apiError}` : `Error: ${apiError}`);
     }
   };
 
@@ -164,6 +220,11 @@ export default function RegisterPage() {
           0% { transform: scale(0); }
           50% { transform: scale(1.2); }
           100% { transform: scale(1); }
+        }
+        .auth-input-group.error .auth-input-border {
+          border-color: #EF4444 !important;
+          background: #FEF2F2 !important;
+          box-shadow: 0 0 0 3px rgba(239,68,68,0.1);
         }
         .auth-slide-up { animation: authSlideUp 0.7s ease-out forwards; }
         .auth-fade-in { animation: authFadeIn 0.8s ease-out forwards; }
@@ -471,20 +532,18 @@ export default function RegisterPage() {
                   textAlign: isRTL ? "right" : "left",
                 }}
               >
-                {isRTL ? "إنشاء حساب" : "Create Account"}
-              </h1>
-              <p
-                style={{
-                  fontSize: 14,
-                  color: "#6B7280",
-                  marginBottom: 24,
-                  textAlign: isRTL ? "right" : "left",
-                }}
-              >
-                {isRTL
-                  ? "سجّل الآن واستمتع بتجربة تسوق مميزة"
-                  : "Register now and enjoy a unique shopping experience"}
-              </p>
+                {getPageTitle()}
+               </h1>
+               <p
+                 style={{
+                   fontSize: 14,
+                   color: "#6B7280",
+                   marginBottom: 24,
+                   textAlign: isRTL ? "right" : "left",
+                 }}
+               >
+                {getPageDesc()}
+               </p>
 
               {/* Social Login */}
               <div
@@ -585,7 +644,7 @@ export default function RegisterPage() {
                   className="auth-name-phone-grid"
                 >
                   {/* Full Name */}
-                  <div className={`auth-input-group ${focusedField === "fullName" ? "focused" : ""}`}>
+                  <div className={`auth-input-group ${focusedField === "fullName" ? "focused" : ""} ${(error && (error.includes("اسم") || error.includes("name"))) ? "error" : ""}`}>
                     <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                       {isRTL ? "الاسم الكامل" : "Full Name"}
                     </label>
@@ -619,7 +678,7 @@ export default function RegisterPage() {
                   </div>
 
                   {/* Phone */}
-                  <div className={`auth-input-group ${focusedField === "phone" ? "focused" : ""}`}>
+                  <div className={`auth-input-group ${focusedField === "phone" ? "focused" : ""} ${(error && (error.includes("هاتف") || error.includes("phone"))) ? "error" : ""}`}>
                     <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                       {isRTL ? "رقم الهاتف" : "Phone Number"}
                     </label>
@@ -654,66 +713,39 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                {/* Account Type */}
+                {/* Account Type (Hidden selector or simplified display) */}
                 <div style={{ marginBottom: 14 }}>
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                    {isRTL ? "نوع الحساب" : "Account Type"}
+                    {isRTL ? "نوع الحساب المختار" : "Selected Account Type"}
                   </label>
                   <div
                     style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 10,
+                      padding: "12px 16px",
+                      borderRadius: 14,
+                      background: "#F0FFF4",
+                      border: "1.5px solid #2E7D32",
+                      color: "#2E7D32",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, account_type: "FARMER" }))}
-                      style={{
-                        height: 48,
-                        borderRadius: 14,
-                        border: formData.account_type === "FARMER" ? "2px solid #2E7D32" : "1.5px solid #E2E8F0",
-                        background: formData.account_type === "FARMER" ? "#F0FFF4" : "#F9FAFB",
-                        color: formData.account_type === "FARMER" ? "#2E7D32" : "#6B7280",
-                        fontSize: 14,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                      }}
-                    >
-                      🌾 {isRTL ? "مزارع" : "Farmer"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, account_type: "TRADER" }))}
-                      style={{
-                        height: 48,
-                        borderRadius: 14,
-                        border: formData.account_type === "TRADER" ? "2px solid #2E7D32" : "1.5px solid #E2E8F0",
-                        background: formData.account_type === "TRADER" ? "#F0FFF4" : "#F9FAFB",
-                        color: formData.account_type === "TRADER" ? "#2E7D32" : "#6B7280",
-                        fontSize: 14,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                      }}
-                    >
-                      🛒 {isRTL ? "تاجر" : "Trader"}
-                    </button>
+                    <span>
+                      {typeParam === "farmer" && (isRTL ? "🌾 مزارع" : "Farmer")}
+                      {typeParam === "trader" && (isRTL ? "🛒 تاجر" : "Trader")}
+                      {typeParam === "entity" && (isRTL ? "🏢 منشأة" : "Entity")}
+                    </span>
+                    <Link to="/account-type" style={{ fontSize: 12, color: "#2E7D32", textDecoration: "underline" }}>
+                      {isRTL ? "تغيير النوع" : "Change Type"}
+                    </Link>
                   </div>
                 </div>
 
                 {/* Email */}
                 <div
-                  className={`auth-input-group ${focusedField === "email" ? "focused" : ""}`}
+                  className={`auth-input-group ${focusedField === "email" ? "focused" : ""} ${(error && (error.includes("بريد") || error.includes("email"))) ? "error" : ""}`}
                   style={{ marginBottom: 14 }}
                 >
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
@@ -759,7 +791,7 @@ export default function RegisterPage() {
                   className="auth-name-phone-grid"
                 >
                   {/* Password */}
-                  <div className={`auth-input-group ${focusedField === "password" ? "focused" : ""}`}>
+                  <div className={`auth-input-group ${focusedField === "password" ? "focused" : ""} ${(error && (error.includes("ور") || error.includes("password") || error.includes("أحرف"))) ? "error" : ""}`}>
                     <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                       {isRTL ? "كلمة المرور" : "Password"}
                     </label>

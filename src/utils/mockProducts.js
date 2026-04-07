@@ -139,7 +139,7 @@ export const mockProducts = [
     reviews: 32,
     badgeColor: "bg-primary",
     images: [
-      "/images/product-grape-main.jpg"
+      "/images/product-grape-main1.jpg"
     ],
     descriptionEn: "Crisp, sweet seedless green grapes perfect for quick snacking and fruit platters.",
     descriptionAr: "عنب أخضر بدون بذور، مقرمش وحلو المذاق، مثالي للوجبات الخفيفة السريعة وأطباق الفاكهة.",
@@ -230,7 +230,7 @@ export const mockProducts = [
     reviews: 215,
     badgeColor: "bg-cta",
     images: [
-      "/images/product-mango-main.jpg"
+      "/images/product-mango-main1.jpg"
     ],
     descriptionEn: "Golden, tropical, melt-in-your-mouth sweet mangoes. Perfect for desserts and direct snacking.",
     descriptionAr: "مانجو استوائية ذهبية تذوب في الفم بحلاوتها. مثالية للحلويات أو تناولها كما هي.",

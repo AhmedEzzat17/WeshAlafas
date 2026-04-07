@@ -9,12 +9,13 @@ export default function ProductDetailsPage() {
   const { id } = useParams();
   const { locale, direction } = useLanguage();
   const { products: mockProducts } = useDashboardData();
-  // const { addToCart, toggleCart, toggleWishlist, isInWishlist, isInCart } =
-  const { addToCart, toggleWishlist, isInWishlist, isInCart } =
-    useCart();
+  const { addToCart, removeFromCart, updateCartQuantity, toggleWishlist, isInWishlist, isInCart, getCartItemQuantity } = useCart();
   const isRTL = direction === "rtl";
 
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(() => {
+    const cartQty = getCartItemQuantity(parseInt(id));
+    return cartQty > 0 ? cartQty : 1;
+  });
   const [activeImage, setActiveImage] = useState(0);
 
   const product =
@@ -23,7 +24,8 @@ export default function ProductDetailsPage() {
   const [prevId, setPrevId] = useState(id);
   if (id !== prevId) {
     setActiveImage(0);
-    setQuantity(1);
+    const cartQty = getCartItemQuantity(parseInt(id));
+    setQuantity(cartQty > 0 ? cartQty : 1);
     setPrevId(id);
   }
 
@@ -32,6 +34,13 @@ export default function ProductDetailsPage() {
   }, [id]);
 
   if (!product) return null;
+
+  const isSharedImageProduct = [5, 8].includes(product.id);
+  const sharedImage = "/images/product-grape-main1.jpg";
+
+  const mainImageSrc = isSharedImageProduct 
+    ? sharedImage 
+    : (product.images?.[activeImage] || product.image);
 
   const relatedProducts = mockProducts
     .filter((p) => p.id !== product.id)
@@ -161,7 +170,8 @@ export default function ProductDetailsPage() {
                     className="text-gray-300 line-through font-medium"
                     style={{ fontSize: 16, lineHeight: 1, marginBottom: 3 }}
                   >
-                    {product.oldPrice.toFixed(2)} {locale === "ar" ? "ج.م" : "EGP"}
+                    {product.oldPrice.toFixed(2)}{" "}
+                    {locale === "ar" ? "ج.م" : "EGP"}
                   </span>
                 )}
                 {product.oldPrice && (
@@ -175,7 +185,8 @@ export default function ProductDetailsPage() {
                     }}
                   >
                     {locale === "ar" ? "وفر" : "Save"}{" "}
-                    {(product.oldPrice - product.price).toFixed(2)} {locale === "ar" ? "ج.م" : "EGP"}
+                    {(product.oldPrice - product.price).toFixed(2)}{" "}
+                    {locale === "ar" ? "ج.م" : "EGP"}
                   </span>
                 )}
               </div>
@@ -445,7 +456,11 @@ export default function ProductDetailsPage() {
                         border: "none",
                         background: "none",
                       }}
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      onClick={() => {
+                        const newQty = Math.max(1, quantity - 1);
+                        setQuantity(newQty);
+                        if (inCart) updateCartQuantity(product.id, newQty);
+                      }}
                     >
                       −
                     </button>
@@ -470,7 +485,11 @@ export default function ProductDetailsPage() {
                         border: "none",
                         background: "none",
                       }}
-                      onClick={() => setQuantity(quantity + 1)}
+                      onClick={() => {
+                        const newQty = quantity + 1;
+                        setQuantity(newQty);
+                        if (inCart) updateCartQuantity(product.id, newQty);
+                      }}
                     >
                       +
                     </button>
@@ -495,7 +514,7 @@ export default function ProductDetailsPage() {
                   }}
                   onClick={() => {
                     if (inCart) {
-                      // Already in cart - do nothing or navigate to cart
+                      removeFromCart(product.id);
                       return;
                     }
                     addToCart(product, quantity);
@@ -526,8 +545,8 @@ export default function ProductDetailsPage() {
                   )}
                   {inCart
                     ? locale === "ar"
-                      ? "✓ تم الإضافة للسلة"
-                      : "✓ Added to Cart"
+                      ? "إزالة من السلة"
+                      : "Remove from Cart"
                     : locale === "ar"
                       ? "أضف للسلة"
                       : "Add to Cart"}
@@ -622,7 +641,7 @@ export default function ProductDetailsPage() {
                 )}
 
                 <img
-                  src={product.images?.[activeImage] || product.image}
+                  src={mainImageSrc}
                   alt={locale === "ar" ? product.nameAr : product.nameEn}
                   className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                   style={{ borderRadius: 16 }}
@@ -633,7 +652,7 @@ export default function ProductDetailsPage() {
               </div>
 
               {/* Thumbnails */}
-              {product.images && product.images.length > 1 && (
+              {product.images && product.images.length > 1 && !isSharedImageProduct && (
                 <div
                   className="flex overflow-x-auto no-scrollbar pb-2"
                   style={{ gap: 8 }}
@@ -766,7 +785,7 @@ export default function ProductDetailsPage() {
           <div
             id="related-slider"
             className="flex overflow-x-auto no-scrollbar scroll-smooth px-4 sm:px-8 md:px-12 lg:px-16 pb-4"
-            style={{ gap: "clamp(12px, 2vw, 20px)"}}
+            style={{ gap: "clamp(12px, 2vw, 20px)" }}
             onMouseDown={(e) => {
               e.currentTarget.isDown = true;
               e.currentTarget.startX = e.pageX - e.currentTarget.offsetLeft;

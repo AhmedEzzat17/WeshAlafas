@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useDashboardData } from "./shared/DashboardDataContext";
 import {
@@ -7,6 +9,7 @@ import {
   Layers,
   TrendingUp,
   TrendingDown,
+  Globe,
 } from "lucide-react";
 import {
   BarChart,
@@ -46,7 +49,10 @@ function CustomTooltip({ active, payload, locale }) {
 export default function DashboardHome() {
   const { locale, direction } = useLanguage();
   const isRTL = direction === "rtl";
+  const navigate = useNavigate();
   const { products, categories, users, cropsLoading } = useDashboardData();
+
+  const [showWebsiteModal, setShowWebsiteModal] = useState(false);
 
   /* ---- Derive real stats from data ---- */
   const totalProducts = products.length;
@@ -118,25 +124,53 @@ export default function DashboardHome() {
     <div>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes modalFade { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
       `}</style>
 
       {/* Page Header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1
+      <div style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+        <div>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 800,
+              color: "#1a1a1a",
+              marginBottom: 4,
+            }}
+          >
+            {locale === "ar" ? "لوحة التحكم" : "Dashboard"}
+          </h1>
+          <p style={{ fontSize: 14, color: "#94A3B8" }}>
+            {locale === "ar"
+              ? "مرحباً بعودتك! إليك البيانات الحقيقية."
+              : "Welcome back! Here's your real data."}
+          </p>
+        </div>
+
+        {/* Go to Website Button */}
+        <button 
+          onClick={() => setShowWebsiteModal(true)}
           style={{
-            fontSize: 24,
-            fontWeight: 800,
-            color: "#1a1a1a",
-            marginBottom: 4,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 18px",
+            borderRadius: 12,
+            background: "#fff",
+            border: "1px solid #E2E8F0",
+            color: "#475569",
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.02)"
           }}
+          onMouseOver={(e) => { e.currentTarget.style.borderColor = "#2E7D32"; e.currentTarget.style.color = "#2E7D32"; }}
+          onMouseOut={(e) => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.color = "#475569"; }}
         >
-          {locale === "ar" ? "لوحة التحكم" : "Dashboard"}
-        </h1>
-        <p style={{ fontSize: 14, color: "#94A3B8" }}>
-          {locale === "ar"
-            ? "مرحباً بعودتك! إليك البيانات الحقيقية."
-            : "Welcome back! Here's your real data."}
-        </p>
+          <Globe size={18} />
+          {locale === "ar" ? "الذهاب للموقع" : "Go to Website"}
+        </button>
       </div>
 
 
@@ -470,6 +504,48 @@ export default function DashboardHome() {
             </div>
           </div>
         </>
+      )}
+      {/* Confirmation Modal */}
+      {showWebsiteModal && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(4px)", padding: 24 }}>
+          <div style={{ 
+            backgroundColor: "#ffffff", 
+            borderRadius: 20, 
+            padding: "32px 24px", 
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", 
+            width: "100%", 
+            maxWidth: 400, 
+            border: "1px solid #E2E8F0", 
+            textAlign: "center",
+            animation: "modalFade 0.2s ease-out",
+            direction: isRTL ? "rtl" : "ltr",
+            fontFamily: isRTL ? "'Cairo', sans-serif" : "'Inter', sans-serif"
+          }}>
+            <div style={{ width: 64, height: 64, backgroundColor: "#f0fdf4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, color: "#2E7D32", margin: "0 auto" }}>
+              <Globe size={32} />
+            </div>
+            <h3 style={{ fontSize: 22, color: "#1f2937", fontWeight: 800, margin: "0 0 12px" }}>
+              {locale === "ar" ? "الذهاب إلى الموقع" : "Go to Website"}
+            </h3>
+            <p style={{ color: "#64748b", fontSize: 15, margin: "0 0 28px", lineHeight: 1.6 }}>
+              {locale === "ar" ? "هل أنت متأكد من الذهاب إلى الموقع الرئيسي؟" : "Are you sure you want to go to the main website?"}
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button 
+                onClick={() => setShowWebsiteModal(false)} 
+                style={{ flex: 1, padding: "12px", borderRadius: 12, color: "#374151", fontWeight: 700, backgroundColor: "#F3F4F6", border: "none", cursor: "pointer" }}
+              >
+                {locale === "ar" ? "تراجع" : "Cancel"}
+              </button>
+              <button 
+                onClick={() => navigate("/")} 
+                style={{ flex: 1, padding: "12px", borderRadius: 12, color: "#ffffff", fontWeight: 700, backgroundColor: "#2E7D32", border: "none", cursor: "pointer" }}
+              >
+                {locale === "ar" ? "نعم، متأكد" : "Yes, I'm sure"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

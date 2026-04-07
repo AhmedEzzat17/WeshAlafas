@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { authService } from "../../service/api";
+import { authService } from "../service/api";
 
 /**
  * AuthContext – Refactored

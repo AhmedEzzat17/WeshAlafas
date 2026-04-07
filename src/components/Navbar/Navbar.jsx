@@ -186,9 +186,11 @@ export default function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("home");
   const menuRef = useRef(null);
   const menuButtonRef = useRef(null);
-  const accountDropdownRef = useRef(null);
+  const desktopAccountRef = useRef(null);
+  const mobileAccountRef = useRef(null);
   const location = useLocation();
 
   const navLinks = [
@@ -197,7 +199,8 @@ export default function Navbar() {
     { key: "categories", path: "/#categories" },
     { key: "products", path: "/products" },
     { key: "offers", path: "/products?category=offers" },
-    { key: "contact", path: "/#contact" },
+    // { key: "listings", path: "/listings" },
+    { key: "contact", path: "/contact" },
   ];
 
   const handleNavClick = (e, path) => {
@@ -371,7 +374,10 @@ export default function Navbar() {
           }}
           onMouseDown={(e) => e.preventDefault()} // Prevent blur from firing before click
         >
-          <h4 className="text-gray-400 text-xs font-bold uppercase mb-3 flex items-center gap-2" style={{ marginBottom: "10px" }}>
+          <h4
+            className="text-gray-400 text-xs font-bold uppercase mb-3 flex items-center gap-2"
+            style={{ marginBottom: "10px" }}
+          >
             <svg
               width="14"
               height="14"
@@ -393,7 +399,7 @@ export default function Navbar() {
               <button
                 key={idx}
                 type="button"
-                 style={{ padding: "9px" }}
+                style={{ padding: "9px" }}
                 className="bg-gray-50 text-gray-700 hover:bg-primary/10 hover:text-primary-dark transition-colors px-3 py-1.5 rounded-full text-sm font-medium border border-gray-200 hover:border-primary/30 cursor-pointer"
                 onClick={() => handlePopularSearch(item)}
               >
@@ -405,9 +411,53 @@ export default function Navbar() {
       )}
     </div>
   );
+  // Track which section is visible on the home page
+  useEffect(() => {
+    if (location.pathname !== "/") {
+      setActiveSection(null);
+      return;
+    }
+
+    // Map section IDs to nav keys
+    const sectionMap = [
+      { id: "contact", key: "contact" },
+      { id: "categories", key: "categories" },
+      { id: "about", key: "about" },
+    ];
+
+    const handleScroll = () => {
+      const scrollY = window.scrollY + 150;
+
+      // Check sections from bottom to top
+      for (const section of sectionMap) {
+        const el = document.getElementById(section.id);
+        if (el && scrollY >= el.offsetTop) {
+          setActiveSection(section.key);
+          return;
+        }
+      }
+      // If none matched, we're at the top → home
+      setActiveSection("home");
+    };
+
+    handleScroll(); // run once on mount/route change
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [location.pathname]);
+
   const isActive = (path) => {
-    if (path === "/") return location.pathname === "/" && !location.hash && !location.search;
-    return location.pathname + location.search + location.hash === path;
+    // On the home page, use scroll-based active section
+    if (location.pathname === "/") {
+      if (path === "/") return activeSection === "home";
+      if (path === "/#about") return activeSection === "about";
+      if (path === "/#categories") return activeSection === "categories";
+      if (path === "/contact") return activeSection === "contact";
+      return false;
+    }
+    // On other pages, match by URL
+    if (path === "/") return false;
+    if (path.startsWith("/#")) return false;
+    return location.pathname + location.search === path;
   };
 
   const isRTL = direction === "rtl";
@@ -415,11 +465,12 @@ export default function Navbar() {
   /* Close account dropdown on outside click */
   useEffect(() => {
     const handler = (e) => {
-      if (
-        isAccountDropdownOpen &&
-        accountDropdownRef.current &&
-        !accountDropdownRef.current.contains(e.target)
-      ) {
+      if (!isAccountDropdownOpen) return;
+      const clickedOutsideDesktop = desktopAccountRef.current && !desktopAccountRef.current.contains(e.target);
+      const clickedOutsideMobile = mobileAccountRef.current && !mobileAccountRef.current.contains(e.target);
+      
+      // Close dropdown if click is outside both desktop and mobile dropdowns
+      if (clickedOutsideDesktop && clickedOutsideMobile) {
         setIsAccountDropdownOpen(false);
       }
     };
@@ -457,10 +508,25 @@ export default function Navbar() {
 
   /* Get user display name (first + last name) */
   const getUserDisplayName = () => {
-    if (!user?.fullName) return "";
-    const parts = user.fullName.trim().split(/\s+/);
+    const name = user?.fullName || user?.name || "";
+    if (!name) return "";
+    const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) return `${parts[0]} ${parts[1]}`;
     return parts[0];
+  };
+
+  /* Get user initials (first 1-2 chars of first/last name) */
+  const getUserInitials = () => {
+    const name = user?.fullName || user?.name || "";
+    if (!name) return "U";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+    }
+    // Single name: take first 2 characters
+    return parts[0].length >= 2
+      ? parts[0].substring(0, 2).toUpperCase()
+      : parts[0].charAt(0).toUpperCase();
   };
 
   return (
@@ -559,7 +625,7 @@ export default function Navbar() {
               <HeartIcon />
               <CartBadge count={wishlistItems.length} />
             </Link>
-            <div className="relative" ref={accountDropdownRef}>
+            <div className="relative" ref={desktopAccountRef}>
               <button
                 onClick={handleAccountClick}
                 className="rounded-xl text-text-muted hover:text-primary hover:bg-primary/10 transition-all duration-200 flex items-center justify-center cursor-pointer"
@@ -587,7 +653,7 @@ export default function Navbar() {
                       fontWeight: 700,
                     }}
                   >
-                    {user?.fullName?.charAt(0)?.toUpperCase() || "U"}
+                    {getUserInitials()}
                   </div>
                 ) : (
                   <UserIcon />
@@ -676,7 +742,8 @@ export default function Navbar() {
                         padding: "10px 14px",
                         fontSize: 14,
                         fontWeight: 500,
-                        color: "#374151",
+                        color: "#DC2626",
+                        backgroundColor: "rgba(239, 68, 68, 0.05)",
                         border: "none",
                         background: "transparent",
                         textAlign: isRTL ? "right" : "left",
@@ -817,7 +884,11 @@ export default function Navbar() {
             </div>
 
             {/* Right Icons */}
-            <div className="flex items-center relative" style={{ gap: 2 }} ref={accountDropdownRef}>
+            <div
+              className="flex items-center relative"
+              style={{ gap: 2 }}
+              ref={mobileAccountRef}
+            >
               <Link
                 to="/cart"
                 className="relative rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-all duration-200 flex items-center justify-center shrink-0"
@@ -871,14 +942,14 @@ export default function Navbar() {
                           fontWeight: 700,
                         }}
                       >
-                        {user?.fullName?.charAt(0)?.toUpperCase() || "U"}
+                        {getUserInitials()}
                       </div>
                     ) : (
                       <UserIcon size={20} />
                     )}
                   </div>
                 </button>
-                
+
                 {/* Account Dropdown for Mobile */}
                 {isAccountDropdownOpen && isAuthenticated && (
                   <div
@@ -917,7 +988,13 @@ export default function Navbar() {
                           ? `\u0645\u0631\u062D\u0628\u0627\u064B ${getUserDisplayName()}`
                           : `Hello ${getUserDisplayName()}`}
                       </p>
-                      <p style={{ fontSize: 12, color: "#6B7280", wordBreak: "break-all" }}>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: "#6B7280",
+                          wordBreak: "break-all",
+                        }}
+                      >
                         {user?.email || ""}
                       </p>
                     </div>
@@ -1159,39 +1236,144 @@ export default function Navbar() {
       `}</style>
       {/* ==================== LOGOUT MODAL ==================== */}
       {isLogoutModalOpen && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(4px)", padding: 24, transition: "all 0.3s ease" }}>
-          <div 
-            style={{ backgroundColor: "#ffffff", borderRadius: 16, padding: 24, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", width: "100%", maxWidth: 400, border: "1px solid #E2E8F0", transform: "scale(1)", transition: "all 0.3s ease" }}
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(4px)",
+            padding: 24,
+            transition: "all 0.3s ease",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: 16,
+              padding: 24,
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              width: "100%",
+              maxWidth: 400,
+              border: "1px solid #E2E8F0",
+              transform: "scale(1)",
+              transition: "all 0.3s ease",
+            }}
           >
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-              <div style={{ width: 64, height: 64, backgroundColor: "#FEF2F2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: "#EF4444" }}>
-                <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  backgroundColor: "#FEF2F2",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 16,
+                  color: "#EF4444",
+                }}
+              >
+                <svg
+                  width="32"
+                  height="32"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
+                  />
                 </svg>
               </div>
-              <h3 style={{ fontSize: 20, color: "#1a1a1a", fontWeight: "bold", marginBottom: 8 }}>
+              <h3
+                style={{
+                  fontSize: 20,
+                  color: "#1a1a1a",
+                  fontWeight: "bold",
+                  marginBottom: 8,
+                }}
+              >
                 {locale === "ar" ? "تسجيل الخروج" : "Sign Out"}
               </h3>
-              <p style={{ color: "#64748B", fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
-                {locale === "ar" 
-                  ? "هل أنت متأكد أنك تريد تسجيل الخروج من حسابك المنشأ في التطبيق؟" 
+              <p
+                style={{
+                  color: "#64748B",
+                  fontSize: 15,
+                  marginBottom: 24,
+                  lineHeight: 1.6,
+                }}
+              >
+                {locale === "ar"
+                  ? "هل أنت متأكد أنك تريد تسجيل الخروج من حسابك المنشأ في التطبيق؟"
                   : "Are you sure you want to sign out of your account?"}
               </p>
-              
+
               <div style={{ display: "flex", gap: 12, width: "100%" }}>
                 <button
                   onClick={() => setIsLogoutModalOpen(false)}
-                  style={{ flex: 1, padding: "12px 16px", borderRadius: 12, color: "#374151", fontWeight: 600, backgroundColor: "#F3F4F6", border: "none", cursor: "pointer", transition: "all 0.2s" }}
-                  onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#E5E7EB"; e.currentTarget.style.color = "#1F2937"; }}
-                  onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "#F3F4F6"; e.currentTarget.style.color = "#374151"; }}
+                  style={{
+                    flex: 1,
+                    padding: "12px 16px",
+                    borderRadius: 12,
+                    color: "#374151",
+                    fontWeight: 600,
+                    backgroundColor: "#F3F4F6",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = "#E5E7EB";
+                    e.currentTarget.style.color = "#1F2937";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = "#F3F4F6";
+                    e.currentTarget.style.color = "#374151";
+                  }}
                 >
                   {locale === "ar" ? "تراجع" : "Cancel"}
                 </button>
                 <button
                   onClick={confirmLogout}
-                  style={{ flex: 1, padding: "12px 16px", borderRadius: 12, color: "#ffffff", fontWeight: 600, backgroundColor: "#DC2626", border: "none", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 6px -1px rgba(220, 38, 38, 0.1)" }}
-                  onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#B91C1C"; e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(220, 38, 38, 0.3)"; }}
-                  onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "#DC2626"; e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(220, 38, 38, 0.1)"; }}
+                  style={{
+                    flex: 1,
+                    padding: "12px 16px",
+                    borderRadius: 12,
+                    color: "#ffffff",
+                    fontWeight: 600,
+                    backgroundColor: "#DC2626",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    boxShadow: "0 4px 6px -1px rgba(220, 38, 38, 0.1)",
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = "#B91C1C";
+                    e.currentTarget.style.boxShadow =
+                      "0 10px 15px -3px rgba(220, 38, 38, 0.3)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = "#DC2626";
+                    e.currentTarget.style.boxShadow =
+                      "0 4px 6px -1px rgba(220, 38, 38, 0.1)";
+                  }}
                 >
                   {locale === "ar" ? "نعم، متأكد" : "Yes, Sign Out"}
                 </button>
@@ -1200,7 +1382,6 @@ export default function Navbar() {
           </div>
         </div>
       )}
-
     </>
   );
 }

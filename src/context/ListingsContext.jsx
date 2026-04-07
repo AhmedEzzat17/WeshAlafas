@@ -1,5 +1,5 @@
 import { createContext, useContext, useCallback } from "react";
-import { listingsService } from "../../service/api";
+import { listingsService } from "../service/api";
 import useCrud from "../hooks/useCrud";
 
 /**

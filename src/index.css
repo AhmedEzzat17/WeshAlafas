@@ -81,7 +81,7 @@ body {
   margin: 0 auto;
   position: relative;
   background-color: var(--color-bg);
-  box-shadow: 0 0 40px rgba(0,0,0,0.03);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.03);
 }
 
 /* ===================================

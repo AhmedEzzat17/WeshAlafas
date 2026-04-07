@@ -4,7 +4,7 @@ import { useCart } from "../context/CartContext";
 
 export default function CartPage() {
   const { locale, direction } = useLanguage();
-  const { cartItems, updateCartQuantity, removeFromCart, cartTotal, cartCount } = useCart();
+  const { cartItems, updateCartQuantity, removeFromCart, cartTotal, cartCount, cartTotalQuantity } = useCart();
   const isRTL = direction === "rtl";
 
   return (
@@ -285,7 +285,7 @@ export default function CartPage() {
                     >
                       {locale === "ar" ? "المجموع الفرعي" : "Subtotal"}
                       <span className="text-gray-400" style={{ marginInlineStart: 6, fontSize: "clamp(11px, 2vw, 13px)" }}>
-                        ({cartCount} {locale === "ar" ? "عناصر" : "items"})
+                        ({cartTotalQuantity} {locale === "ar" ? "عناصر" : "items"})
                       </span>
                     </span>
                     <span
@@ -361,7 +361,8 @@ export default function CartPage() {
                 </div>
 
                 {/* Checkout Button */}
-                <button
+                <Link
+                  to="/checkout"
                   className="w-full bg-primary hover:bg-primary-dark text-white font-bold transition-all duration-300 flex justify-center items-center cursor-pointer active:scale-[0.97]"
                   style={{
                     padding: "clamp(12px, 2.5vw, 16px) 16px",
@@ -371,6 +372,7 @@ export default function CartPage() {
                     border: "none",
                     boxShadow: "0 4px 16px rgba(46,125,50,0.25)",
                     marginBottom: 12,
+                    textDecoration: "none"
                   }}
                 >
                   <lord-icon
@@ -390,7 +392,7 @@ export default function CartPage() {
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
-                </button>
+                </Link>
 
                 {/* Continue Shopping */}
                 <Link

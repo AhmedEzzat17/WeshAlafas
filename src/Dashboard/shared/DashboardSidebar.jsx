@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
@@ -10,47 +11,84 @@ import {
   ChevronLeft,
   ChevronRight,
   ShoppingCart,
+  Globe,
 } from "lucide-react";
-
-const navItems = [
-  {
-    path: "/dashboard",
-    icon: LayoutDashboard,
-    labelAr: "لوحة التحكم",
-    labelEn: "Dashboard",
-    end: true,
-  },
-  {
-    path: "/dashboard/categories",
-    icon: Layers,
-    labelAr: "الأصناف",
-    labelEn: "Categories",
-  },
-  {
-    path: "/dashboard/products",
-    icon: Package,
-    labelAr: "المنتجات",
-    labelEn: "Products",
-  },
-  {
-    path: "/dashboard/users",
-    icon: Users,
-    labelAr: "المستخدمين",
-    labelEn: "Users",
-  },
-  {
-    path: "/dashboard/settings",
-    icon: Settings,
-    labelAr: "الإعدادات",
-    labelEn: "Settings",
-  },
-];
 
 export default function DashboardSidebar({ isCollapsed, onToggle }) {
   const { locale, direction } = useLanguage();
   const { user } = useAuth();
   const location = useLocation();
   const isRTL = direction === "rtl";
+  const [showWebsiteModal, setShowWebsiteModal] = useState(false);
+
+  const role = user?.role?.toUpperCase() || "";
+  const isAdmin = role === "ADMIN" || role === "COMPANY" || user?.email === "admin@admin.com" || user?.email === "admin@gmail.com";
+  const isFarmer = role === "FARMER";
+
+  const navItems = [];
+
+  // Home is for everyone in dashboard
+  navItems.push({
+    path: "/dashboard",
+    icon: LayoutDashboard,
+    labelAr: "الرئيسية",
+    labelEn: "Dashboard Home",
+    end: true,
+  });
+
+  if (isAdmin) {
+    // navItems.push({
+    //   path: "/dashboard/categories",
+    //   icon: Layers,
+    //   labelAr: "الأصناف",
+    //   labelEn: "Categories",
+    // });
+    // navItems.push({
+    //   path: "/dashboard/products",
+    //   icon: Package,
+    //   labelAr: "المنتجات",
+    //   labelEn: "Products",
+    // });
+    // navItems.push({
+    //   path: "/dashboard/users",
+    //   icon: Users,
+    //   labelAr: "المستخدمين",
+    //   labelEn: "Users",
+    // });
+    navItems.push({
+      path: "/dashboard/crops",
+      icon: Layers,
+      labelAr: "المحاصيل",
+      labelEn: "Crops",
+    });
+  }
+
+  if (isFarmer || isAdmin) { // Admins might want to test as well, or just Farmer
+    navItems.push({
+      path: "/dashboard/my-listings",
+      icon: Package,
+      labelAr: "إدارة العروض",
+      labelEn: "Manage Listings",
+    });
+  }
+
+  // Back to Website option
+  navItems.push({
+    path: "/",
+    icon: Globe,
+    labelAr: "العودة للموقع",
+    labelEn: "Back to Website",
+    isExternal: true, // Special flag to handle navigation out of dashboard
+  });
+
+  if (isAdmin) {
+    navItems.push({
+      path: "/dashboard/settings",
+      icon: Settings,
+      labelAr: "الإعدادات",
+      labelEn: "Settings",
+    });
+  }
 
   const getUserInitial = () => {
     if (!user?.fullName) return "A";
@@ -84,6 +122,51 @@ export default function DashboardSidebar({ isCollapsed, onToggle }) {
         overflow: "hidden",
       }}
     >
+      <style>{`
+        @keyframes modalFade { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+      `}</style>
+
+      {/* Confirmation Modal — Only for Go to Website */}
+      {showWebsiteModal && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(4px)", padding: 24 }}>
+          <div style={{ 
+            backgroundColor: "#ffffff", 
+            borderRadius: 20, 
+            padding: "32px 24px", 
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", 
+            width: "100%", 
+            maxWidth: 400, 
+            border: "1px solid #E2E8F0", 
+            textAlign: "center",
+            animation: "modalFade 0.2s ease-out",
+            direction: isRTL ? "rtl" : "ltr"
+          }}>
+            <div style={{ width: 64, height: 64, backgroundColor: "#f0fdf4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, color: "#2E7D32", margin: "0 auto" }}>
+              <Globe size={32} />
+            </div>
+            <h3 style={{ fontSize: 22, color: "#1f2937", fontWeight: 800, margin: "0 0 12px" }}>
+              {locale === "ar" ? "الذهاب إلى الموقع" : "Go to Website"}
+            </h3>
+            <p style={{ color: "#64748b", fontSize: 15, margin: "0 0 28px", lineHeight: 1.6 }}>
+              {locale === "ar" ? "هل أنت متأكد من الذهاب إلى الموقع الرئيسي؟" : "Are you sure you want to go to the main website?"}
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button 
+                onClick={() => setShowWebsiteModal(false)} 
+                style={{ flex: 1, padding: "12px", borderRadius: 12, color: "#374151", fontWeight: 700, backgroundColor: "#F3F4F6", border: "none", cursor: "pointer" }}
+              >
+                {locale === "ar" ? "تراجع" : "Cancel"}
+              </button>
+              <button 
+                onClick={() => window.location.href = "/"} 
+                style={{ flex: 1, padding: "12px", borderRadius: 12, color: "#ffffff", fontWeight: 700, backgroundColor: "#2E7D32", border: "none", cursor: "pointer" }}
+              >
+                {locale === "ar" ? "تأكيد" : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Logo / Store name — fixed top */}
       <div
         style={{
@@ -178,6 +261,46 @@ export default function DashboardSidebar({ isCollapsed, onToggle }) {
       >
         {navItems.map((item) => {
           const Icon = item.icon;
+          
+          if (item.path === "/") {
+            return (
+              <div
+                key="back-to-site"
+                onClick={() => setShowWebsiteModal(true)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: isCollapsed ? "12px" : "12px 16px",
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "#64748B",
+                  background: "transparent",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  justifyContent: isCollapsed ? "center" : "flex-start",
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(46,125,50,0.05)";
+                    e.currentTarget.style.color = "#2E7D32";
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = "#64748B";
+                }}
+              >
+                <Icon size={20} style={{ flexShrink: 0 }} />
+                {!isCollapsed && (
+                  <span style={{ whiteSpace: "nowrap" }}>
+                    {locale === "ar" ? item.labelAr : item.labelEn}
+                  </span>
+                )}
+              </div>
+            );
+          }
+
           const isActive = item.end
             ? location.pathname === item.path
             : location.pathname.startsWith(item.path);

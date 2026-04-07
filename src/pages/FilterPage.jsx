@@ -37,6 +37,8 @@ export default function FilterPage() {
   const [sortBy, setSortBy] = useState("relevance");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
+
+
   useEffect(() => {
     const qSearch = queryParams.get("search");
     const qCat = queryParams.get("category");
@@ -164,7 +166,7 @@ export default function FilterPage() {
       </div>
 
       {/* ── Star Rating ── */}
-      <div style={{ marginBottom: 24 }}>
+      {/* <div style={{ marginBottom: 24 }}>
         <FilterSectionTitle icon={<svg width="16" height="16" fill="#2E7D32" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>}>
           {locale === "ar" ? "التقييم" : "Rating"}
         </FilterSectionTitle>
@@ -192,7 +194,7 @@ export default function FilterPage() {
             );
           })}
         </div>
-      </div>
+      </div> */}
 
       {/* ── Availability ── */}
       <div style={{ marginBottom: 24 }}>
@@ -218,8 +220,9 @@ export default function FilterPage() {
         </FilterSectionTitle>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {[
-            { id: "gradeA", en: "Grade A", ar: "فئة أ" },
-            { id: "gradeB", en: "Grade B", ar: "فئة ب" },
+            { id: "gradeA", en: "Grade A", ar: "درجة اولى" },
+            { id: "gradeB", en: "Grade B", ar: "درجة ثانية" },
+            { id: "gradeC", en: "Grade C", ar: "درجة ثالثة" },
             { id: "organic", en: "Organic", ar: "عضوي" },
             { id: "exportQuality", en: "Export Quality", ar: "جودة التصدير" },
           ].map((grade) => {

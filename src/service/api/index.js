@@ -1,10 +1,10 @@
 /**
- * service/api/index.js – Barrel export
+ * src/service/api/index.js – Barrel export
  * ======================================
  * 
  * Single import point for all API services.
  * Usage:
- *   import { authService, cropsService, listingsService } from "../../service/api";
+ *   import { authService, cropsService, listingsService } from "../service/api";
  */
 
 export { default as axiosClient } from "./axiosClient";

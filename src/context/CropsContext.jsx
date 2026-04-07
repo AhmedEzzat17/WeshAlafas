@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { cropsService } from "../../service/api";
+import { cropsService } from "../service/api";
 import { useAuth } from "./AuthContext";
 
 /**
