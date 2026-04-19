@@ -156,7 +156,7 @@ export default function OffersSlider() {
     setIsDragging(false);
     setIsPaused(false);
     const diff = currentX - startX;
-    if (Math.abs(diff) > 50) {
+    if (Math.abs(diff) > 20) {
       if (isRTL) {
         if (diff > 0)
           goNext(); // dragged right

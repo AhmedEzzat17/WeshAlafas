@@ -294,21 +294,21 @@ export default function HomePage() {
         titleAr="الخضروات الطازجة"
         titleEn="Fresh Vegetables"
         sliderId="vegetables-slider"
-        products={mockProducts.slice(3, 9)}
+        products={mockProducts.slice(0, 11)}
       />
 
       <ProductSliderSection
         titleAr="الفواكه الموسمية"
         titleEn="Seasonal Fruits"
         sliderId="fruits-slider"
-        products={mockProducts.slice(2, 8)}
+        products={mockProducts.slice(2, 11)}
       />
 
       <ProductSliderSection
         titleAr="أفضل العروض"
         titleEn="Best Deals"
         sliderId="deals-slider"
-        products={mockProducts.slice(1, 7)}
+        products={mockProducts.slice(1, 11)}
       />
 
       {/* ===== All Products - Full Width Grid ===== */}

@@ -25,7 +25,26 @@ export default function FilterPage() {
 
   const [search, setSearch] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
-  const [priceRange, setPriceRange] = useState([0, 200000]);
+
+  // Calculate actual price bounds from products
+  const { minHardBound, maxHardBound } = useMemo(() => {
+    if (!mockProducts || mockProducts.length === 0) return { minHardBound: 0, maxHardBound: 10000 };
+    const prices = mockProducts.map(p => p.price);
+    return {
+      minHardBound: Math.floor(Math.min(...prices)),
+      maxHardBound: Math.ceil(Math.max(...prices))
+    };
+  }, [mockProducts]);
+
+  const [priceRange, setPriceRange] = useState([0, 10000]);
+
+  // Sync state with bounds on initial load if products are available
+  useEffect(() => {
+    if (mockProducts.length > 0 && priceRange[1] === 10000) {
+      setPriceRange([minHardBound, maxHardBound]);
+    }
+  }, [mockProducts, minHardBound, maxHardBound]);
+
   const [isReadyToShip, setIsReadyToShip] = useState(true);
   const [selectedRating, setSelectedRating] = useState(0);
   const [qualityGrades, setQualityGrades] = useState({
@@ -73,7 +92,7 @@ export default function FilterPage() {
   const handleResetAll = () => {
     setSearch("");
     setSelectedCategory("all");
-    setPriceRange([0, 200000]);
+    setPriceRange([minHardBound, maxHardBound]);
     setIsReadyToShip(true);
     setSelectedRating(0);
     setQualityGrades({ gradeA: false, gradeB: false, organic: false, exportQuality: false });
@@ -117,7 +136,7 @@ export default function FilterPage() {
           </svg>
           {locale === "ar" ? "الفلاتر" : "Filters"}
         </h2>
-        <button onClick={handleResetAll} className="text-primary/80 hover:text-primary font-semibold transition-colors" style={{ fontSize: 13 }}>
+        <button onClick={handleResetAll} className="text-primary/80 hover:text-primary font-semibold transition-colors" style={{ fontSize: 13, cursor: "pointer" }}>
           {locale === "ar" ? "ارجاع الكل" : "Reset All"}
         </button>
       </div>
@@ -156,12 +175,90 @@ export default function FilterPage() {
           {locale === "ar" ? "نطاق السعر" : "Price Range"}
         </FilterSectionTitle>
         <div style={{ padding: "0 4px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-            <span className="bg-green-50 text-primary font-bold" style={{ fontSize: 13, padding: "4px 12px", borderRadius: 8 }}>0 {locale === "ar" ? "ج.م" : "EGP"}</span>
-            <span className="bg-green-50 text-primary font-bold" style={{ fontSize: 13, padding: "4px 12px", borderRadius: 8 }}>{priceRange[1]} {locale === "ar" ? "ج.م" : "EGP"}</span>
+          {/* Price Labels */}
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
+            <div className={`bg-green-50 border border-green-100/50 ${isRTL ? "text-right" : "text-left"}`} style={{ padding: "6px 12px", borderRadius: 10 }}>
+              <p className="text-[10px] text-primary/60 font-bold uppercase" style={{ marginBottom: 2 }}>{locale === "ar" ? "من" : "Min"}</p>
+              <p className="text-primary font-bold" style={{ fontSize: 13 }}>{priceRange[0]} <span style={{ fontSize: 11 }}>{locale === "ar" ? "ج.م" : "EGP"}</span></p>
+            </div>
+            <div className={`bg-green-50 border border-green-100/50 ${isRTL ? "text-left" : "text-right"}`} style={{ padding: "6px 12px", borderRadius: 10 }}>
+              <p className="text-[10px] text-primary/60 font-bold uppercase" style={{ marginBottom: 2 }}>{locale === "ar" ? "إلى" : "Max"}</p>
+              <p className="text-primary font-bold" style={{ fontSize: 13 }}>{priceRange[1]} <span style={{ fontSize: 11 }}>{locale === "ar" ? "ج.م" : "EGP"}</span></p>
+            </div>
           </div>
-          <input type="range" min="0" max="200000" step="50" value={priceRange[1]} onChange={(e) => setPriceRange([0, parseInt(e.target.value)])}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary" />
+
+          {/* Dual Range Slider Container - Fully Responsive to Direction */}
+          <div className="relative h-6 flex items-center" style={{ marginTop: 10 }}>
+            {/* Background Rail */}
+            <div className="absolute w-full h-1.5 bg-gray-200 rounded-full" />
+            
+            {/* Active Highlight Track */}
+            <div 
+              className="absolute h-1.5 bg-primary rounded-full transition-all" 
+              style={{
+                [isRTL ? "right" : "left"]: `${((priceRange[0] - minHardBound) / (maxHardBound - minHardBound)) * 100}%`,
+                [isRTL ? "left" : "right"]: `${100 - ((priceRange[1] - minHardBound) / (maxHardBound - minHardBound)) * 100}%`
+              }}
+            />
+
+            {/* Hidden Input for Min */}
+            <input 
+              type="range" 
+              min={minHardBound} 
+              max={maxHardBound} 
+              step="1"
+              value={priceRange[0]}
+              onChange={(e) => {
+                const val = Math.min(parseInt(e.target.value), priceRange[1] - 50);
+                setPriceRange([val, priceRange[1]]);
+              }}
+              className="dual-range-input absolute w-full appearance-none bg-transparent pointer-events-none z-30"
+              style={{ height: 24, padding: 0 }}
+            />
+
+            {/* Hidden Input for Max */}
+            <input 
+              type="range" 
+              min={minHardBound} 
+              max={maxHardBound} 
+              step="1"
+              value={priceRange[1]}
+              onChange={(e) => {
+                const val = Math.max(parseInt(e.target.value), priceRange[0] + 50);
+                setPriceRange([priceRange[0], val]);
+              }}
+              className="dual-range-input absolute w-full appearance-none bg-transparent pointer-events-none z-30"
+              style={{ height: 24, padding: 0 }}
+            />
+          </div>
+
+          <style>{`
+            .dual-range-input::-webkit-slider-thumb {
+              pointer-events: auto;
+              width: 18px;
+              height: 18px;
+              border-radius: 50%;
+              background: #FFFFFF;
+              border: 3px solid #2E7D32;
+              cursor: pointer;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+              appearance: none;
+              transition: transform 0.1s;
+            }
+            .dual-range-input::-webkit-slider-thumb:hover { transform: scale(1.15); }
+            .dual-range-input::-webkit-slider-thumb:active { cursor: grabbing; }
+            .dual-range-input::-moz-range-thumb {
+              pointer-events: auto;
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+              background: #FFFFFF;
+              border: 3px solid #2E7D32;
+              cursor: pointer;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+              transition: transform 0.1s;
+            }
+          `}</style>
         </div>
       </div>
 
