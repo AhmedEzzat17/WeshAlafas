@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
 import listingsService from "../../service/api/listingsService";
 import cropsService from "../../service/api/cropsService";
+import toast from "react-hot-toast";
 
 export default function ListingForm() {
   const { id } = useParams();
@@ -101,7 +102,7 @@ export default function ListingForm() {
       }
 
       if (res.success) {
-        alert(locale === "ar" ? "تم الحفظ بنجاح!" : "Saved successfully!");
+        toast.success(locale === "ar" ? "تم حفظ العرض بنجاح!" : "Listing saved successfully!");
         navigate("/dashboard/my-listings");
       } else {
         throw res;
@@ -110,8 +111,9 @@ export default function ListingForm() {
       console.error(err);
       if (err.errors) {
         setErrors(err.errors);
+        toast.error(locale === "ar" ? "يرجى تصحيح الأخطاء في النموذج" : "Please correct the errors in the form");
       } else {
-        alert(err.message || "An error occurred");
+        toast.error(err.message || "An error occurred");
       }
     } finally {
       setLoading(false);

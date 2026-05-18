@@ -1,6 +1,7 @@
 import { useLanguage } from "../../context/LanguageContext";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useDashboardData } from "../../Dashboard/shared/DashboardDataContext";
 import vegetablesImg from "/images/about-bg.jpg";
 import fruitsImg from "../../assets/categories/fruits.png";
 import grainsImg from "../../assets/categories/grains.png";
@@ -8,6 +9,7 @@ import offersImg from "../../assets/categories/offers.png";
 
 export default function CategoriesSection() {
   const { locale, direction } = useLanguage();
+  const { categories: apiCategories } = useDashboardData();
   const isRTL = direction === "rtl";
   const gridRef = useRef(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -45,32 +47,26 @@ export default function CategoriesSection() {
     };
   }, [isPaused]);
 
-  const categories = [
-    {
-      id: "vegetables",
-      titleEn: "Vegetables",
-      titleAr: "الخضراوات",
-      image: vegetablesImg,
-    },
-    {
-      id: "fruits",
-      titleEn: "Fruits",
-      titleAr: "الفواكه",
-      image: fruitsImg,
-    },
-    {
-      id: "grains",
-      titleEn: "Grains and Crops",
-      titleAr: "حبوب ومحاصيل",
-      image: grainsImg,
-    },
-    {
-      id: "offers",
-      titleEn: "Offers",
-      titleAr: "العروض",
-      image: offersImg,
-    },
-  ];
+  const categories = useMemo(() => {
+    const fromApi = apiCategories.map(cat => ({
+      id: cat.slug || cat.id,
+      titleEn: cat.nameEn,
+      titleAr: cat.nameAr,
+      image: cat.image || vegetablesImg, // Fallback image
+    }));
+
+    // Add Special Offers if not present
+    if (!fromApi.find(c => c.id === 'offers')) {
+      fromApi.push({
+        id: "offers",
+        titleEn: "Offers",
+        titleAr: "العروض",
+        image: offersImg,
+      });
+    }
+    
+    return fromApi;
+  }, [apiCategories]);
 
   return (
     <section id="categories" className="bg-white" style={{ padding: "48px 30px" }} dir={isRTL ? "rtl" : "ltr"}>

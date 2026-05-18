@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
+import { authService } from "../service/api";
+import toast from "react-hot-toast";
 
 export default function ProfilePage() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -26,6 +28,7 @@ export default function ProfilePage() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
@@ -139,13 +142,15 @@ export default function ProfilePage() {
 
       {/* Grid Menu Options */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-        <button onClick={() => setCurrentView("orders")} className="hub-btn">
+        <button onClick={() => navigate("/dashboard")} className="hub-btn">
           <div className="icon-wrap" style={{ background: "#f0fdf4", color: "#2E7D32" }}>
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
           </div>
           <div style={{ textAlign: isRTL ? "right" : "left" }}>
-            <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1f2937" }}>{locale === "ar" ? "سجل الطلبات" : "Order History"}</h3>
-            <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>{locale === "ar" ? "متابعة وعرض تفاصيل طلباتك" : "Track and view your orders"}</p>
+            <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1f2937" }}>{locale === "ar" ? "التقارير والإحصائيات" : "Reports & Stats"}</h3>
+            <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>{locale === "ar" ? "عرض التقارير المالية والتحليلات" : "View financial reports and analytics"}</p>
           </div>
         </button>
 
@@ -608,20 +613,58 @@ export default function ProfilePage() {
                 <div style={{ display: "flex", gap: 12 }}>
                   <button onClick={() => setShowPasswordModal(false)} style={{ flex: 1, padding: "14px", borderRadius: 12, color: "#374151", fontWeight: 700, backgroundColor: "#F3F4F6", border: "none", cursor: "pointer" }}>{locale === "ar" ? "إلغاء" : "Cancel"}</button>
                   <button 
-                    onClick={() => {
-                      if (passwords.new && passwords.new === passwords.confirm) {
-                        try {
-                          const localUser = JSON.parse(localStorage.getItem("user") || "{}");
-                          localUser.password = passwords.new; // Saving to Local Storage
-                          localStorage.setItem("user", JSON.stringify(localUser));
+                    onClick={async () => {
+                      if (!passwords.current || !passwords.new || !passwords.confirm) {
+                        toast.error(locale === "ar" ? "يرجى ملء جميع الحقول" : "Please fill all fields");
+                        return;
+                      }
+                      if (passwords.new !== passwords.confirm) {
+                        toast.error(locale === "ar" ? "كلمة المرور غير متطابقة" : "Passwords do not match");
+                        return;
+                      }
+                      
+                      setPasswordLoading(true);
+                      try {
+                        const res = await authService.updatePassword({
+                          current_password: passwords.current,
+                          password: passwords.new,
+                          password_confirmation: passwords.confirm
+                        });
+                        
+                        if (res.success) {
                           setPasswordSuccess(true);
-                        } catch(e) {} // ignore localstorage errors
-                      } else {
-                        alert(locale === "ar" ? "كلمة المرور غير متطابقة" : "Passwords do not match");
+                          toast.success(locale === "ar" ? "تم تغيير كلمة المرور بنجاح" : "Password changed successfully");
+                        } else {
+                          toast.error(res.message || (locale === "ar" ? "فشل تغيير كلمة المرور" : "Failed to change password"));
+                        }
+                      } catch (err) {
+                        console.error("Password update error:", err);
+                        toast.error(locale === "ar" ? "حدث خطأ أثناء الاتصال بالخادم" : "Error connecting to server");
+                      } finally {
+                        setPasswordLoading(false);
                       }
                     }} 
-                    style={{ flex: 1, padding: "14px", borderRadius: 12, color: "#fff", fontWeight: 700, backgroundColor: "#0284c7", border: "none", cursor: "pointer" }}
-                  >{locale === "ar" ? "حفظ التغييرات" : "Save Changes"}</button>
+                    disabled={passwordLoading}
+                    style={{ 
+                      flex: 1, 
+                      padding: "14px", 
+                      borderRadius: 12, 
+                      color: "#fff", 
+                      fontWeight: 700, 
+                      backgroundColor: passwordLoading ? "#94A3B8" : "#0284c7", 
+                      border: "none", 
+                      cursor: passwordLoading ? "not-allowed" : "pointer",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center"
+                    }}
+                  >
+                    {passwordLoading ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 1s linear infinite" }}><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="4" /><path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor" /></svg>
+                    ) : (
+                      locale === "ar" ? "حفظ التغييرات" : "Save Changes"
+                    )}
+                  </button>
                 </div>
               </>
             )}

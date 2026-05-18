@@ -58,7 +58,7 @@ export default function AccountTypePage() {
       bg: "#E3F2FD",
     },
     {
-      id: "entity",
+      id: "company",
       titleEn: "Entity / Establishment",
       titleAr: "منشأة / شركة",
       descEn: "Register your business for bulk orders and partnerships.",

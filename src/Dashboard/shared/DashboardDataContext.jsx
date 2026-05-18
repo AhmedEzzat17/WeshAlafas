@@ -1,123 +1,220 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { mockProducts as initialProducts } from "../../utils/mockProducts";
+import { listingsService, categoriesService, cropsService, dashboardService } from "../../service/api";
 
 /* ================================================================
-   Mock Data Context (No API for now)
+   Data Mapping Helpers
+   ================================================================ */
+
+const mapListingToProduct = (listing) => ({
+  id: listing.id,
+  // We use the crop name if available, fallback to listing title
+  nameEn: listing.crop?.name_en || listing.title,
+  nameAr: listing.crop?.name_ar || listing.title,
+  price: listing.price_per_unit,
+  oldPrice: listing.comparison_price,
+  // Formatting weight/quantity
+  weightEn: `${listing.quantity} ${listing.crop?.standard_unit || 'TON'}`,
+  weightAr: `${listing.quantity} ${listing.crop?.standard_unit === 'TON' ? 'طن' : (listing.crop?.standard_unit === 'KG' ? 'كيلو' : 'وحدة')}`,
+  image: listing.image,
+  images: listing.images?.length > 0 ? listing.images.map(img => img.image_path) : [listing.image],
+  descriptionEn: listing.description,
+  descriptionAr: listing.description,
+  storageEn: listing.storage_information,
+  storageAr: listing.storage_information,
+  usageEn: listing.usage,
+  usageAr: listing.usage,
+  originEn: "Premium Sourced",
+  originAr: "مصدر متميز",
+  category: listing.crop?.category, // Added for filtering
+  categorySlug: listing.crop?.category_slug, // If available
+  badgeEn: listing.quality_grade === 'A+' ? 'Premium' : (listing.comparison_price ? 'Sale' : ''),
+  badgeAr: listing.quality_grade === 'A+' ? 'ممتاز' : (listing.comparison_price ? 'تخفيض' : ''),
+  badgeColor: listing.quality_grade === 'A+' ? 'bg-cta' : 'bg-primary',
+  rating: 5,
+  reviews: Math.floor(Math.random() * 50) + 10,
+});
+
+const mapCategory = (cat) => ({
+  id: cat.id,
+  nameEn: cat.name.en,
+  nameAr: cat.name.ar,
+  slug: cat.slug,
+  icon: cat.icon,
+  image: cat.image,
+  productsCount: cat.crops_count || 0,
+  children: cat.children?.map(mapCategory) || [],
+});
+
+/* ================================================================
+   Dashboard Data Context
    ================================================================ */
 
 const DashboardDataContext = createContext(null);
 
 export function DashboardDataProvider({ children }) {
-  // Load initial data from localStorage or use mock defaults
-  const [categories, setCategories] = useState(() => {
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [crops, setCrops] = useState([]); // List of available crops (for selection)
+  const [users, setUsers] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // 1. Fetch Categories
+  const refreshCategories = useCallback(async () => {
     try {
-      const saved = localStorage.getItem("mock_categories");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
+      const response = await categoriesService.getAll();
+      if (response.success) {
+        setCategories(response.data.map(mapCategory));
+      }
+    } catch (err) {
+      console.error("Failed to fetch categories:", err);
     }
-  });
+  }, []);
 
-  const [products, setProducts] = useState(() => {
+  // 2. Fetch Products (Listings)
+  const refreshProducts = useCallback(async () => {
     try {
-      const saved = localStorage.getItem("mock_products");
-      return saved ? JSON.parse(saved) : initialProducts;
-    } catch {
-      return initialProducts;
+      const response = await listingsService.getAll();
+      if (response.success) {
+        setProducts(response.data.map(mapListingToProduct));
+      }
+    } catch (err) {
+      console.error("Failed to fetch listings:", err);
     }
-  });
+  }, []);
 
-  const [users, setUsers] = useState(() => {
+  // 3. Fetch Dashboard Stats
+  const refreshStats = useCallback(async () => {
     try {
-      const saved = localStorage.getItem("mock_users");
-      // Add fake admin mapped to what we have in auth
-      const defaultUsers = [{ id: 1, name: "Admin User", email: "admin@admin.com", role: "admin", status: "active", joinedEn: "Jan 1, 2024", joinedAr: "1 يناير 2024" }];
-      return saved ? JSON.parse(saved) : defaultUsers;
-    } catch {
-      return [];
+      const response = await dashboardService.getStats();
+      if (response.success) {
+        setStats(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch stats:", err);
     }
-  });
-
-  const [cropsLoading, setCropsLoading] = useState(false);
-
-  // Sync to local storage
-  useEffect(() => {
-    localStorage.setItem("mock_categories", JSON.stringify(categories));
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem("mock_products", JSON.stringify(products));
-  }, [products]);
-
-  useEffect(() => {
-    localStorage.setItem("mock_users", JSON.stringify(users));
-  }, [users]);
-
-  // Mock fetchCrops to just return true since we are local
-  const fetchCrops = useCallback(async () => {
-    setCropsLoading(true);
-    setTimeout(() => {
-      setCropsLoading(false);
-    }, 500);
   }, []);
 
+  // Initial Load
   useEffect(() => {
-    fetchCrops();
-  }, [fetchCrops]);
+    const fetchCropsList = async () => {
+      try {
+        const response = await cropsService.getAll();
+        if (response.success) {
+          setCrops(response.data.map(c => ({
+            id: c.id,
+            nameEn: c.name?.en || c.name,
+            nameAr: c.name?.ar || c.name,
+            category: c.category,
+          })));
+        }
+      } catch (error) {
+        console.error("Fetch crops error:", error);
+      }
+    };
 
-  /* --- Categories CRUD --- */
-  const addCategory = useCallback((cat) => {
-    const colors = ["#FF6B6B", "#51CF66", "#FCC419", "#74C0FC", "#63E6BE", "#F97316", "#845EF7"];
-    setCategories((prev) => [...prev, { ...cat, id: Date.now(), productsCount: 0, status: "active", color: colors[Math.floor(Math.random() * colors.length)] }]);
-  }, []);
+    const refreshData = async () => {
+      setLoading(true);
+      await Promise.all([
+        refreshProducts(), 
+        refreshCategories(), 
+        fetchCropsList(),
+        refreshStats()
+      ]);
+      setLoading(false);
+    };
+    refreshData();
+  }, [refreshCategories, refreshProducts, refreshStats]);
 
-  const updateCategory = useCallback((id, data) => {
-    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...data } : c)));
-  }, []);
+  /* --- Categories CRUD (Optimistic updates or refresh) --- */
+  const addCategory = useCallback(async (cat) => {
+    await refreshCategories();
+  }, [refreshCategories]);
 
-  const deleteCategory = useCallback((id) => {
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-  }, []);
+  const updateCategory = useCallback(async (id, data) => {
+    await refreshCategories();
+  }, [refreshCategories]);
+
+  const deleteCategory = useCallback(async (id) => {
+    await refreshCategories();
+  }, [refreshCategories]);
 
   const getCategoryById = useCallback((id) => {
-    return categories.find((c) => c.id === Number(id));
+    return categories.find((c) => c.id === id);
   }, [categories]);
 
 
   /* --- Products CRUD --- */
-  const addProduct = useCallback(async (prod) => {
-    // Make sure we store it in a format identical to mockProducts
-    // Map whatever input the dashboard uses to the frontend format if needed
-    // But since API is off, if the ProductForm produces `nameEn`, we just add id
-    const newProduct = { ...prod, id: Date.now() };
-    setProducts((prev) => [...prev, newProduct]);
-    return { success: true, data: newProduct };
-  }, []);
+  const addProduct = async (form) => {
+    try {
+      // Map frontend form to backend Listing payload
+      const payload = {
+        crop_id: form.cropId,
+        type: form.type || "FARMER_LISTING", // Default type
+        title: form.nameEn,
+        description: form.descEn,
+        price_per_unit: parseFloat(form.price),
+        quantity: parseFloat(form.stock),
+        min_order_quantity: 1,
+        quality_grade: form.qualityGrade || "A",
+        status: "active",
+        storage_information: form.descAr, // Using as placeholder
+        usage: form.descAr,
+      };
 
-  const updateProduct = useCallback(async (id, data) => {
-    let updatedProduct = null;
-    setProducts((prev) => prev.map((p) => {
-      if (p.id === id) {
-        updatedProduct = { ...p, ...data };
-        return updatedProduct;
+      const response = await listingsService.create(payload);
+      if (response.success) {
+        await refreshProducts();
+        return { success: true };
       }
-      return p;
-    }));
-    return { success: true, data: updatedProduct };
-  }, []);
+      return { success: false, error: response.message };
+    } catch (error) {
+      console.error("Add product error:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const updateProduct = async (id, form) => {
+    try {
+      const payload = {
+        title: form.nameEn,
+        description: form.descEn,
+        price_per_unit: parseFloat(form.price),
+        quantity: parseFloat(form.stock),
+        quality_grade: form.qualityGrade,
+      };
+
+      const response = await listingsService.update(id, payload);
+      if (response.success) {
+        await refreshProducts();
+        return { success: true };
+      }
+      return { success: false, error: response.message };
+    } catch (error) {
+      console.error("Update product error:", error);
+      return { success: false, error: error.message };
+    }
+  };
 
   const patchProduct = useCallback(async (id, data) => {
     return updateProduct(id, data);
   }, [updateProduct]);
 
   const deleteProduct = useCallback(async (id) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    return { success: true };
-  }, []);
+    try {
+      const response = await listingsService.delete(id);
+      if (response.success) {
+        await refreshProducts();
+        return { success: true };
+      }
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }, [refreshProducts]);
 
   const getProductById = useCallback(
     (id) => {
-      return products.find((p) => p.id === Number(id));
+      return products.find((p) => String(p.id) === String(id));
     },
     [products]
   );
@@ -129,9 +226,9 @@ export function DashboardDataProvider({ children }) {
   }, [getProductById]);
 
 
-  /* --- Users CRUD --- */
+  /* --- Users CRUD (Minimal placeholder) --- */
   const addUser = useCallback((u) => {
-    setUsers((prev) => [...prev, { ...u, id: Date.now(), ordersCount: 0, status: "active", joinedEn: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), joinedAr: new Date().toLocaleDateString("ar-EG", { month: "long", day: "numeric", year: "numeric" }) }]);
+    setUsers((prev) => [...prev, { ...u, id: Date.now() }]);
   }, []);
 
   const updateUser = useCallback((id, data) => {
@@ -143,7 +240,7 @@ export function DashboardDataProvider({ children }) {
   }, []);
 
   const getUserById = useCallback((id) => {
-    return users.find((u) => u.id === Number(id));
+    return users.find((u) => u.id === id);
   }, [users]);
 
 
@@ -152,9 +249,10 @@ export function DashboardDataProvider({ children }) {
       value={{
         categories, addCategory, updateCategory, deleteCategory, getCategoryById,
         products, addProduct, updateProduct, deleteProduct, getProductById,
-        patchProduct, fetchCropById, fetchCrops,
-        cropsLoading,
+        patchProduct, fetchCropById, refreshProducts, refreshStats,
+        loading,
         users, addUser, updateUser, deleteUser, getUserById,
+        crops, stats
       }}
     >
       {children}

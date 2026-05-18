@@ -92,12 +92,12 @@ export default function RegisterPage() {
     if (isRTL) {
       if (typeParam === "farmer") return "إنشاء حساب مزارع";
       if (typeParam === "trader") return "إنشاء حساب تاجر";
-      if (typeParam === "entity") return "إنشاء حساب منشأة";
+      if (typeParam === "company") return "إنشاء حساب منشأة";
       return "إنشاء حساب جديد";
     } else {
       if (typeParam === "farmer") return "Farmer Registration";
       if (typeParam === "trader") return "Trader Registration";
-      if (typeParam === "entity") return "Entity Registration";
+      if (typeParam === "company") return "Entity Registration";
       return "Create New Account";
     }
   };
@@ -106,12 +106,12 @@ export default function RegisterPage() {
     if (isRTL) {
       if (typeParam === "farmer") return "سجّل الآن كمنتج وابدأ في عرض محاصيلك";
       if (typeParam === "trader") return "سجّل الآن كتاجر واحصل على أفضل المنتجات من المزارع";
-      if (typeParam === "entity") return "سجّل منشأتك لتسهيل عمليات التوريد والشراء الكبيرة";
+      if (typeParam === "company") return "سجّل منشأتك لتسهيل عمليات التوريد والشراء الكبيرة";
       return "سجّل الآن واستمتع بتجربة تسوق مميزة";
     } else {
       if (typeParam === "farmer") return "Join as a producer and showcase your crops";
       if (typeParam === "trader") return "Join as a trader and get products directly from farms";
-      if (typeParam === "entity") return "Register your entity for large-scale supply and purchase";
+      if (typeParam === "company") return "Register your entity for large-scale supply and purchase";
       return "Register now and enjoy a unique shopping experience";
     }
   };
@@ -153,7 +153,8 @@ export default function RegisterPage() {
 
     const result = await register(formData);
     if (result.success) {
-      if (result.user?.role === "admin") {
+      const role = result.user?.role?.toUpperCase();
+      if (role === "FARMER" || role === "ADMIN") {
         navigate("/dashboard");
       } else {
         navigate("/");
@@ -735,7 +736,7 @@ export default function RegisterPage() {
                     <span>
                       {typeParam === "farmer" && (isRTL ? "🌾 مزارع" : "Farmer")}
                       {typeParam === "trader" && (isRTL ? "🛒 تاجر" : "Trader")}
-                      {typeParam === "entity" && (isRTL ? "🏢 منشأة" : "Entity")}
+                      {typeParam === "company" && (isRTL ? "🏢 منشأة" : "Entity")}
                     </span>
                     <Link to="/account-type" style={{ fontSize: 12, color: "#2E7D32", textDecoration: "underline" }}>
                       {isRTL ? "تغيير النوع" : "Change Type"}

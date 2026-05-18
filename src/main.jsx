@@ -14,8 +14,22 @@ import "./index.css";
 import "./utils/i18n"; // Initialize i18next before React renders
 import App from "./App.jsx";
 
+import { ErrorBoundary } from "react-error-boundary";
+
+function Fallback({ error }) {
+  // Only render the message to avoid gigantic stack traces causing token explosions
+  return (
+    <div id="error-boundary-box" role="alert" style={{ padding: '2rem', color: 'red', background: '#fee' }}>
+      <h2>Something went wrong:</h2>
+      <pre style={{ whiteSpace: 'pre-wrap' }}>{error.message}</pre>
+    </div>
+  );
+}
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary FallbackComponent={Fallback}>
+      <App />
+    </ErrorBoundary>
   </StrictMode>
 );

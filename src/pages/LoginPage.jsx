@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logo.png";
 import authBg from "../assets/auth-bg.png";
+import toast from "react-hot-toast";
 
 /* ====== SVG Icons ====== */
 const GoogleIcon = () => (
@@ -62,6 +63,8 @@ export default function LoginPage() {
   const { direction } = useLanguage();
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect");
   const isRTL = direction === "rtl";
 
   const [email, setEmail] = useState("");
@@ -82,13 +85,21 @@ export default function LoginPage() {
 
     const result = await login({ email, password });
     if (result.success) {
-      if (result.user?.role === "admin") {
+      toast.success(isRTL ? "تم تسجيل الدخول بنجاح!" : "Login successful!");
+      
+      const userRole = result.user?.role?.toUpperCase();
+      
+      if (redirect) {
+        navigate(redirect);
+      } else if (userRole === "ADMIN" || userRole === "FARMER") {
         navigate("/dashboard");
       } else {
         navigate("/");
       }
     } else {
-      setError(result.error || (isRTL ? "البريد الإلكتروني أو كلمة المرور غير صحيحة" : "Invalid email or password"));
+      const msg = result.error || (isRTL ? "البريد الإلكتروني أو كلمة المرور غير صحيحة" : "Invalid email or password");
+      setError(msg);
+      toast.error(msg);
     }
   };
 

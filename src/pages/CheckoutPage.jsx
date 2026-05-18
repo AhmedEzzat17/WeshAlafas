@@ -2,10 +2,14 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import checkoutService from "../service/api/checkoutService";
+import toast from "react-hot-toast";
 
 export default function CheckoutPage() {
   const { locale, direction } = useLanguage();
   const { cartItems, cartTotal, cartCount, clearCart } = useCart();
+  const { user, isAuthenticated } = useAuth();
   const isRTL = direction === "rtl";
   const navigate = useNavigate();
 
@@ -13,13 +17,14 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderId, setOrderId] = useState(null);
+  const [error, setError] = useState(null);
 
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    address: "",
+    name: user?.name || "",
+    email: user?.email || "",
+    address: user?.address || "",
     city: "",
-    phone: "",
+    phone: user?.phone || "",
     cardNumber: "",
     cardExpiry: "",
     cardCvc: "",
@@ -56,20 +61,60 @@ export default function CheckoutPage() {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handlePlaceOrder = (e) => {
+  const handlePlaceOrder = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
+    setError(null);
 
-    setTimeout(() => {
+    try {
+      // In a real multi-item cart, we might create multiple orders or a single order with items
+      // Since the backend currently has a single listing_id per order, we'll loop or just take the first one
+      // FOR THE DEMO: We'll assume the backend can handle the first item for now.
+      
+      const payload = {
+        items: cartItems.map(item => ({
+          listing_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          negotiation_id: item.negotiation_id || null
+        })),
+        total_price: cartTotal,
+        net_amount: cartTotal,
+        payment_method: paymentMethod,
+        shipping_address: `${formData.address}, ${formData.city}`,
+        contact_phone: formData.phone,
+        notes: formData.notes
+      };
+
+      const result = await checkoutService.placeOrder(payload);
+      
       setIsProcessing(false);
-      setOrderId(Math.floor(Math.random() * 90000) + 10000);
+      setOrderId(result.data?.id || Math.floor(Math.random() * 90000) + 10000);
       setOrderSuccess(true);
-      try {
-        if (clearCart) clearCart();
-      } catch (error) {
-        console.error("Cart clear error:", error);
+      toast.success(locale === "ar" ? "تم تأكيد طلبك بنجاح!" : "Order confirmed successfully!");
+      if (clearCart) clearCart();
+      
+      // Auto-redirect after 3 seconds or via button
+      setTimeout(() => {
+        navigate("/dashboard/orders");
+      }, 3000);
+    } catch (err) {
+      console.error("Order error:", err);
+      
+      let msg = locale === "ar" ? "فشل إتمام الطلب. يرجى المحاولة مرة أخرى." : "Failed to place order. Please try again.";
+      
+      if (err.status === 401) {
+        msg = locale === "ar" ? "جلسة العمل انتهت. يرجى تسجيل الدخول مرة أخرى." : "Session expired. Please login again.";
+      } else if (err.status === 403) {
+        msg = locale === "ar" ? "عذراً، ليس لديك صلاحية لإتمام هذا الطلب. يجب أن يكون حسابك من نوع تاجر." : "Sorry, you don't have permission to place this order. Your account must be a TRADER.";
+      } else if (err.message) {
+        msg = err.message;
       }
-    }, 2500);
+      
+      setError(msg);
+      toast.error(msg);
+      setIsProcessing(false);
+    }
   };
 
   /* ========== SUCCESS SCREEN ========== */
@@ -504,6 +549,12 @@ export default function CheckoutPage() {
                   </span>
                 </div>
               </div>
+
+              {error && (
+                <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: '#fef2f2', color: '#dc2626', fontSize: 13, fontWeight: 600, border: '1px solid #fee2e2' }}>
+                  {error}
+                </div>
+              )}
 
               {/* Submit Button */}
               <button

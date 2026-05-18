@@ -22,26 +22,38 @@ import ScrollToTop from "./components/ScrollToTop";
 import CategoriesPage from "./pages/CategoriesPage";
 import FilterPage from "./pages/FilterPage";
 import AdminRoute from "./components/AdminRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 
 /* Features (Listings) */
 import ListingsPage from "./features/listings/ListingsPage";
 import ListingDetailsPage from "./features/listings/ListingDetailsPage";
 import MyListingsPage from "./features/listings/MyListingsPage";
-import ListingForm from "./features/listings/ListingForm";
 
-import CropsManager from "./features/crops/CropsManager";
+
 
 /* Dashboard */
 import Dashboard from "./Dashboard/Dashboard";
 import DashboardHome from "./Dashboard/DashboardHome";
-import DashboardCategories from "./Dashboard/categories";
 import CategoryForm from "./Dashboard/categories/CategoryForm";
 import DashboardProducts from "./Dashboard/products";
 import ProductForm from "./Dashboard/products/ProductForm";
-import DashboardUsers from "./Dashboard/users";
 import UserForm from "./Dashboard/users/UserForm";
 import DashboardSettings from "./Dashboard/settings";
+import DashboardCrops from "./Dashboard/crops/CropsPage";
+import DashboardOrders from "./Dashboard/orders/OrdersPage";
+import OrderDetailsPage from "./Dashboard/orders/OrderDetailsPage";
+import DashboardNegotiations from "./Dashboard/negotiations/NegotiationsPage";
+import DashboardUsers from "./Dashboard/users/UsersPage";
+import DashboardOffers from "./Dashboard/offers/OffersPage";
+import OfferForm from "./Dashboard/offers/OfferForm";
+import DashboardMyListings from "./Dashboard/listings/MyListingsPage";
+import DashboardCategories from "./Dashboard/categories/CategoriesPage";
+import DashboardReports from "./Dashboard/reports/ReportsPage";
+import DashboardListingForm from "./Dashboard/listings/ListingForm";
+import DashboardCropForm from "./Dashboard/crops/CropForm";
+
+import { Toaster } from "react-hot-toast";
 
 function App() {
   return (
@@ -52,6 +64,7 @@ function App() {
             <CartProvider>
               <DashboardDataProvider>
                 <BrowserRouter>
+                  <Toaster position="top-center" reverseOrder={false} />
                   <ScrollToTop />
                   <Routes>
                     {/* ===== Dashboard Routes (own layout, no Navbar/Footer) ===== */}
@@ -82,18 +95,24 @@ function App() {
                         <Route path="users" element={<DashboardUsers />} />
                         <Route path="users/add" element={<UserForm />} />
                         <Route path="users/edit/:id" element={<UserForm />} />
-                        <Route
-                          path="settings"
-                          element={<DashboardSettings />}
-                        />
                         
-                        {/* Crops Management (Admin/Company) */}
-                        <Route path="crops" element={<CropsManager />} />
+                        <Route path="settings" element={<DashboardSettings />} />
                         
-                        {/* Listings Management (Farmer) */}
-                        <Route path="my-listings" element={<MyListingsPage />} />
-                        <Route path="my-listings/new" element={<ListingForm />} />
-                        <Route path="my-listings/edit/:id" element={<ListingForm />} />
+                        <Route path="crops" element={<DashboardCrops />} />
+                        <Route path="crops/add" element={<DashboardCropForm />} />
+                        <Route path="crops/edit/:id" element={<DashboardCropForm />} />
+                        
+                        <Route path="my-listings" element={<DashboardMyListings />} />
+                        <Route path="my-listings/add" element={<DashboardListingForm />} />
+                        <Route path="my-listings/edit/:id" element={<DashboardListingForm />} />
+
+                        <Route path="orders" element={<DashboardOrders />} />
+                        <Route path="orders/:id" element={<OrderDetailsPage />} />
+                        <Route path="negotiations" element={<DashboardNegotiations />} />
+                        <Route path="offers" element={<DashboardOffers />} />
+                        <Route path="offers/add" element={<OfferForm />} />
+                        <Route path="offers/edit/:id" element={<OfferForm />} />
+                        <Route path="reports" element={<DashboardReports />} />
                       </Route>
                     </Route>
 
@@ -102,7 +121,12 @@ function App() {
                       <Route path="/" element={<HomePage />} />
                       <Route path="/product/:id" element={<ProductDetailsPage />} />
                       <Route path="/cart" element={<CartPage />} />
-                      <Route path="/checkout" element={<CheckoutPage />} />
+                      
+                      {/* Protected Site Routes */}
+                      <Route element={<ProtectedRoute />}>
+                        <Route path="/checkout" element={<CheckoutPage />} />
+                      </Route>
+                      
                       <Route path="/wishlist" element={<WishlistPage />} />
                       <Route path="/login" element={<LoginPage />} />
                       <Route path="/account-type" element={<AccountTypePage />} />

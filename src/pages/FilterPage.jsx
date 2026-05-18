@@ -15,7 +15,7 @@ const FilterSectionTitle = ({ icon, children }) => (
 
 export default function FilterPage() {
   const { locale, direction } = useLanguage();
-  const { products: mockProducts } = useDashboardData();
+  const { products: mockProducts, categories: apiCategories } = useDashboardData();
   const isRTL = direction === "rtl";
   const location = useLocation();
 
@@ -40,7 +40,7 @@ export default function FilterPage() {
 
   // Sync state with bounds on initial load if products are available
   useEffect(() => {
-    if (mockProducts.length > 0 && priceRange[1] === 10000) {
+    if (mockProducts.length > 0) {
       setPriceRange([minHardBound, maxHardBound]);
     }
   }, [mockProducts, minHardBound, maxHardBound]);
@@ -56,30 +56,28 @@ export default function FilterPage() {
   const [sortBy, setSortBy] = useState("relevance");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-
-
   useEffect(() => {
     const qSearch = queryParams.get("search");
     const qCat = queryParams.get("category");
     
-    const targetSearch = qSearch !== null ? qSearch : initialSearch;
-    const targetCat = qCat !== null ? qCat : initialCategory;
-    
-    const timeout = setTimeout(() => {
-      setSearch(prev => prev !== targetSearch ? targetSearch : prev);
-      setSelectedCategory(prev => prev !== targetCat ? targetCat : prev);
-    }, 0);
-    
-    return () => clearTimeout(timeout);
-  }, [location.search, initialSearch, initialCategory]);
+    if (qSearch !== null) setSearch(qSearch);
+    if (qCat !== null) setSelectedCategory(qCat);
+  }, [location.search]);
 
-  const categories = [
-    { id: "all", en: "All Products", ar: "جميع المنتجات" },
-    { id: "fruits", en: "Fruits", ar: "الفواكه" },
-    { id: "vegetables", en: "Vegetables", ar: "الخضراوات" },
-    { id: "grains", en: "Grains", ar: "حبوب ومحاصيل" },
-    { id: "offers", en: "Special Offers", ar: "العروض" },
-  ];
+  // Dynamic Categories from API
+  const categories = useMemo(() => {
+    const core = [
+      { id: "all", en: "All Products", ar: "جميع المنتجات" },
+    ];
+    // Map API categories to filter format
+    const fromApi = apiCategories.map(cat => ({
+      id: cat.id, // Or slug if you prefer
+      slug: cat.slug,
+      en: cat.nameEn,
+      ar: cat.nameAr
+    }));
+    return [...core, ...fromApi, { id: "offers", en: "Special Offers", ar: "العروض" }];
+  }, [apiCategories]);
 
   const sortOptions = [
     { id: "relevance", en: "Relevance", ar: "الملاءمة" },
@@ -100,28 +98,44 @@ export default function FilterPage() {
 
   const filteredProducts = useMemo(() => {
     let result = [...mockProducts];
+
+    // 1. Search Filter
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter((p) => p.nameEn.toLowerCase().includes(q) || p.nameAr.includes(q));
+      result = result.filter((p) => 
+        p.nameEn.toLowerCase().includes(q) || 
+        p.nameAr.includes(q) || 
+        p.descriptionEn?.toLowerCase().includes(q)
+      );
     }
+
+    // 2. Category Filter
     if (selectedCategory !== "all") {
-      result = result.filter((p) => {
-        const name = p.nameEn.toLowerCase();
-        if (selectedCategory === "fruits") return name.includes("apple") || name.includes("strawberry") || name.includes("banana") || name.includes("grape") || name.includes("orange") || name.includes("blueberry") || name.includes("mango");
-        if (selectedCategory === "vegetables") return name.includes("tomato") || name.includes("potato");
-        if (selectedCategory === "offers") return p.oldPrice != null;
-        if (selectedCategory === "fruits_avocado") return name.includes("avocado");
-        return true;
-      });
+      if (selectedCategory === "offers") {
+        result = result.filter((p) => p.oldPrice != null);
+      } else {
+        result = result.filter((p) => 
+          p.category === selectedCategory || 
+          p.categorySlug === selectedCategory ||
+          p.categoryId === selectedCategory // Fallback to ID
+        );
+      }
     }
+
+    // 3. Price Filter
     result = result.filter((p) => p.price >= priceRange[0] && p.price <= priceRange[1]);
+
+    // 4. Rating Filter
     if (selectedRating > 0) {
       result = result.filter((p) => p.rating >= selectedRating);
     }
+
+    // 5. Sorting
     if (sortBy === "price_asc") result.sort((a, b) => a.price - b.price);
     else if (sortBy === "price_desc") result.sort((a, b) => b.price - a.price);
     else if (sortBy === "az") result.sort((a, b) => locale === "ar" ? a.nameAr.localeCompare(b.nameAr) : a.nameEn.localeCompare(b.nameEn));
     else if (sortBy === "za") result.sort((a, b) => locale === "ar" ? b.nameAr.localeCompare(a.nameAr) : b.nameEn.localeCompare(a.nameEn));
+
     return result;
   }, [mockProducts, search, selectedCategory, priceRange, sortBy, selectedRating, locale]);
 

@@ -1,154 +1,209 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
-import { useDashboardData } from "../shared/DashboardDataContext";
-import { Plus, Search, Edit3, Trash2, Users as UsersIcon, Shield, UserCheck, UserX } from "lucide-react";
+import { usersService } from "../../service/api";
+import { 
+  Users, 
+  Search, 
+  UserPlus, 
+  MoreVertical, 
+  Shield, 
+  UserCheck, 
+  UserX, 
+  Mail,
+  Phone,
+  Calendar,
+  Filter
+} from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function UsersPage() {
   const { locale, direction } = useLanguage();
   const isRTL = direction === "rtl";
   const navigate = useNavigate();
-  const { users, deleteUser, updateUser } = useDashboardData();
+  
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterRole, setFilterRole] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("ALL");
 
-  const roles = [
-    { en: "all", ar: "الكل" },
-    { en: "Admin", ar: "مدير" },
-    { en: "Moderator", ar: "مشرف" },
-    { en: "Customer", ar: "عميل" },
-  ];
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-  const filteredUsers = users.filter((u) => {
-    const q = searchQuery.toLowerCase();
-    const nameEnMatch = (u.nameEn || u.name || "").toLowerCase().includes(q);
-    const nameArMatch = (u.nameAr || u.name || "").toLowerCase().includes(q);
-    const emailMatch = (u.email || "").toLowerCase().includes(q);
-    
-    const matchesSearch = nameEnMatch || nameArMatch || emailMatch;
-    const matchesRole = filterRole === "all" || u.roleEn === filterRole || u.role === filterRole;
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const res = await usersService.getAll();
+      if (res.success) {
+        setUsers(res.data);
+      }
+    } catch (err) {
+      toast.error(locale === "ar" ? "فشل تحميل المستخدمين" : "Failed to load users");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async (id) => {
+    try {
+      const res = await usersService.toggleStatus(id);
+      if (res.success) {
+        toast.success(locale === "ar" ? "تم تحديث الحالة بنجاح" : "Status updated successfully");
+        fetchUsers();
+      }
+    } catch (err) {
+      toast.error(locale === "ar" ? "فشل تحديث الحالة" : "Failed to update status");
+    }
+  };
+
+  const getRoleBadge = (role) => {
+    const roles = {
+      ADMIN: { labelAr: "مدير", labelEn: "Admin", color: "#EF4444", bg: "#FEE2E2" },
+      FARMER: { labelAr: "مزارع", labelEn: "Farmer", color: "#2E7D32", bg: "#E8F5E9" },
+      TRADER: { labelAr: "تاجر", labelEn: "Trader", color: "#3B82F6", bg: "#DBEAFE" },
+      COMPANY: { labelAr: "شركة / منشأة", labelEn: "Company", color: "#8B5CF6", bg: "#EDE9FE" },
+    };
+    return roles[role] || { labelAr: role, labelEn: role, color: "#64748B", bg: "#F1F5F9" };
+  };
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter === "ALL" || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
-  const handleDelete = (id) => {
-    if (window.confirm(locale === "ar" ? "هل أنت متأكد من حذف هذا المستخدم؟" : "Are you sure you want to delete this user?")) {
-      deleteUser(id);
-    }
-  };
-
-  const handleToggleStatus = (u) => {
-    updateUser(u.id, { status: u.status === "active" ? "banned" : "active" });
-  };
-
-  const getRoleBadgeType = (roleEn) => {
-    switch (roleEn) {
-      case "Admin": return "success";
-      case "Moderator": return "info";
-      default: return "warning";
-    }
-  };
-
   return (
-    <div>
+    <div dir={isRTL ? "rtl" : "ltr"} className="dashboard-animate-in">
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
+      <div style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: "#1a1a1a", marginBottom: 4 }}>
-            {locale === "ar" ? "المستخدمين" : "Users"}
+            {locale === "ar" ? "إدارة المستخدمين" : "User Management"}
           </h1>
           <p style={{ fontSize: 14, color: "#94A3B8" }}>
-            {locale === "ar" ? `إجمالي المستخدمين: ${users.length}` : `Total users: ${users.length}`}
+            {locale === "ar" ? "إدارة الصلاحيات والمستخدمين المسجلين في المنصة." : "Manage permissions and users registered on the platform."}
           </p>
         </div>
-        <button className="dashboard-btn dashboard-btn--primary" onClick={() => navigate("/dashboard/users/add")}>
-          <Plus size={18} />
+        <button 
+          onClick={() => navigate("/dashboard/users/add")}
+          className="dashboard-btn dashboard-btn--primary"
+        >
+          <UserPlus size={18} style={{ marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 }} />
           {locale === "ar" ? "إضافة مستخدم" : "Add User"}
         </button>
       </div>
 
       {/* Filters */}
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
-        <div style={{ position: "relative", flex: "1", maxWidth: 400 }}>
-          <Search size={18} color="#94A3B8" style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", [isRTL ? "right" : "left"]: 14, pointerEvents: "none" }} />
-          <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={locale === "ar" ? "بحث عن مستخدم..." : "Search users..."} className="dashboard-input" style={{ paddingLeft: isRTL ? 16 : 44, paddingRight: isRTL ? 44 : 16 }} />
+      <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: 280 }}>
+          <Search size={18} color="#94A3B8" style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", [isRTL ? "right" : "left"]: 14 }} />
+          <input 
+            type="text" 
+            placeholder={locale === "ar" ? "بحث بالاسم أو البريد..." : "Search by name or email..."}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="dashboard-input"
+            style={{ paddingLeft: isRTL ? 16 : 44, paddingRight: isRTL ? 44 : 16 }}
+          />
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {roles.map((role) => (
-            <button key={role.en} onClick={() => setFilterRole(role.en)} style={{ padding: "8px 16px", borderRadius: 10, border: filterRole === role.en ? "1px solid #2E7D32" : "1px solid #E2E8F0", background: filterRole === role.en ? "rgba(46,125,50,0.08)" : "transparent", color: filterRole === role.en ? "#2E7D32" : "#64748B", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}>
-              {locale === "ar" ? role.ar : role.en}
+        
+        <div style={{ display: "flex", gap: 8 }}>
+          {["ALL", "ADMIN", "FARMER", "TRADER"].map(role => (
+            <button
+              key={role}
+              onClick={() => setRoleFilter(role)}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 600,
+                border: roleFilter === role ? "1.5px solid #2E7D32" : "1.5px solid #E2E8F0",
+                background: roleFilter === role ? "rgba(46,125,50,0.05)" : "#fff",
+                color: roleFilter === role ? "#2E7D32" : "#64748B",
+                cursor: "pointer",
+                transition: "all 0.2s ease"
+              }}
+            >
+              {role === "ALL" ? (locale === "ar" ? "الكل" : "All") : (locale === "ar" ? getRoleBadge(role).labelAr : getRoleBadge(role).labelEn)}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="dashboard-panel" style={{ overflowX: "auto" }}>
-        <table className="dashboard-table">
-          <thead>
-            <tr>
-              <th>{locale === "ar" ? "المستخدم" : "User"}</th>
-              <th>{locale === "ar" ? "البريد الإلكتروني" : "Email"}</th>
-              <th>{locale === "ar" ? "الهاتف" : "Phone"}</th>
-              <th>{locale === "ar" ? "الدور" : "Role"}</th>
-              <th>{locale === "ar" ? "الطلبات" : "Orders"}</th>
-              <th>{locale === "ar" ? "الحالة" : "Status"}</th>
-              <th>{locale === "ar" ? "الإجراءات" : "Actions"}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((u) => (
-              <tr key={u.id}>
-                <td>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 38, height: 38, borderRadius: "50%", background: u.status === "active" ? "linear-gradient(135deg, #2E7D32 0%, #14532D 100%)" : "linear-gradient(135deg, #94A3B8 0%, #64748B 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
-                      {(u.nameEn || u.nameAr || u.name || "U").charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 1 }}>{locale === "ar" ? (u.nameAr || u.name) : (u.nameEn || u.name)}</p>
-                      <p style={{ fontSize: 12, color: "#94A3B8" }}>{locale === "ar" ? u.joinedAr : u.joinedEn}</p>
-                    </div>
-                  </div>
-                </td>
-                <td style={{ color: "#64748B" }}>{u.email}</td>
-                <td style={{ color: "#64748B", direction: "ltr" }}>{u.phone || "-"}</td>
-                <td>
-                  <span className={`dashboard-badge dashboard-badge--${getRoleBadgeType(u.roleEn || u.role)}`}>
-                    <Shield size={12} style={{ marginRight: isRTL ? 0 : 4, marginLeft: isRTL ? 4 : 0 }} />
-                    {locale === "ar" ? (u.roleAr || u.role) : (u.roleEn || u.role)}
+      {/* Grid View */}
+      {loading ? (
+        <div style={{ padding: 80, textAlign: "center" }}>
+          <div className="animate-spin" style={{ width: 40, height: 40, border: "3px solid #E2E8F0", borderTopColor: "#2E7D32", borderRadius: "50%", margin: "0 auto 16px" }} />
+          <p style={{ color: "#94A3B8" }}>{locale === "ar" ? "جاري تحميل المستخدمين..." : "Loading users..."}</p>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
+          {filteredUsers.map(user => (
+            <div key={user.id} className="dashboard-panel" style={{ padding: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: "#F8FAFC", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#2E7D32" }}>
+                  {user.name?.charAt(0).toUpperCase()}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <span style={{ 
+                    padding: "4px 10px", 
+                    borderRadius: 8, 
+                    fontSize: 11, 
+                    fontWeight: 700, 
+                    background: getRoleBadge(user.role).bg, 
+                    color: getRoleBadge(user.role).color 
+                  }}>
+                    {locale === "ar" ? getRoleBadge(user.role).labelAr : getRoleBadge(user.role).labelEn}
                   </span>
-                </td>
-                <td style={{ fontWeight: 600 }}>{u.ordersCount}</td>
-                <td>
-                  <span className={`dashboard-badge dashboard-badge--${u.status === "active" ? "success" : "danger"}`} style={{ cursor: "pointer" }} onClick={() => handleToggleStatus(u)}>
-                    {u.status === "active" ? (locale === "ar" ? "نشط" : "Active") : (locale === "ar" ? "محظور" : "Banned")}
-                  </span>
-                </td>
-                <td>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button className="dashboard-btn dashboard-btn--outline" style={{ padding: "6px 8px", borderRadius: 8 }} onClick={() => handleToggleStatus(u)} title={u.status === "active" ? (locale === "ar" ? "حظر" : "Ban") : (locale === "ar" ? "تفعيل" : "Activate")}>
-                      {u.status === "active" ? <UserX size={14} /> : <UserCheck size={14} />}
-                    </button>
-                    <button className="dashboard-btn dashboard-btn--outline" style={{ padding: "6px 8px", borderRadius: 8 }} onClick={() => navigate(`/dashboard/users/edit/${u.id}`)} title={locale === "ar" ? "تعديل" : "Edit"}>
-                      <Edit3 size={14} />
-                    </button>
-                    <button className="dashboard-btn dashboard-btn--danger" style={{ padding: "6px 8px", borderRadius: 8 }} onClick={() => handleDelete(u.id)} title={locale === "ar" ? "حذف" : "Delete"}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <button style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer" }}>
+                    <MoreVertical size={18} />
+                  </button>
+                </div>
+              </div>
 
-        {filteredUsers.length === 0 && (
-          <div className="dashboard-empty">
-            <div className="dashboard-empty-icon"><UsersIcon size={36} /></div>
-            <h3 className="dashboard-empty-title">{locale === "ar" ? "لا يوجد مستخدمين" : "No users found"}</h3>
-            <p className="dashboard-empty-desc">{locale === "ar" ? "لم يتم العثور على مستخدمين مطابقين." : "No users match your search criteria."}</p>
-          </div>
-        )}
-      </div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>{user.name}</h3>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#64748B", fontSize: 13, marginBottom: 12 }}>
+                <Mail size={14} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</span>
+              </div>
+
+              <div style={{ display: "flex", gap: 12, borderTop: "1px solid #F1F5F9", paddingTop: 16, marginTop: 12 }}>
+                <button 
+                  onClick={() => handleToggleStatus(user.id)}
+                  style={{ 
+                    flex: 1, 
+                    padding: "8px", 
+                    borderRadius: 8, 
+                    border: "none", 
+                    background: user.status === "active" ? "#FEF2F2" : "#F0FDF4", 
+                    color: user.status === "active" ? "#EF4444" : "#2E7D32", 
+                    fontSize: 12, 
+                    fontWeight: 700, 
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6
+                  }}
+                >
+                  {user.status === "active" ? <UserX size={14} /> : <UserCheck size={14} />}
+                  {user.status === "active" ? (locale === "ar" ? "تعطيل" : "Disable") : (locale === "ar" ? "تفعيل" : "Enable")}
+                </button>
+                <button 
+                  onClick={() => navigate(`/dashboard/users/edit/${user.id}`)}
+                  className="dashboard-btn dashboard-btn--outline"
+                  style={{ flex: 1, padding: "8px", fontSize: 12 }}
+                >
+                  <Shield size={14} style={{ marginRight: isRTL ? 0 : 6, marginLeft: isRTL ? 6 : 0 }} />
+                  {locale === "ar" ? "تعديل البيانات" : "Edit User"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

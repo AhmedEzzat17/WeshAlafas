@@ -9,10 +9,11 @@ import OffersSlider from "../components/OffersSlider/OffersSlider";
 import CategoriesSection from "../components/CategoriesSection/CategoriesSection";
 import ProductSliderSection from "../components/ProductSliderSection/ProductSliderSection";
 import { useDashboardData } from "../Dashboard/shared/DashboardDataContext";
+import { ProductSkeleton } from "../components/Skeleton";
 
 export default function HomePage() {
   const { locale, direction } = useLanguage();
-  const { products: mockProducts } = useDashboardData();
+  const { products: mockProducts, loading } = useDashboardData();
   const isRTL = direction === "rtl";
   const location = useLocation();
 
@@ -35,6 +36,7 @@ export default function HomePage() {
   }, [location]);
 
   useEffect(() => {
+    if (loading) return;
     const slider = document.getElementById("product-slider");
     if (!slider) return;
 
@@ -67,19 +69,37 @@ export default function HomePage() {
       slider.removeEventListener("touchstart", handleEnter);
       slider.removeEventListener("touchend", handleLeave);
     };
-  }, [isRTL]);
+  }, [isRTL, loading]);
+
+  const renderSkeletons = () => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 px-4 sm:px-8 md:px-12 lg:px-16">
+      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <ProductSkeleton key={i} />)}
+    </div>
+  );
 
   return (
     <div dir={isRTL ? "rtl" : "ltr"}>
       {/* ===== Hero ===== */}
       <Hero />
 
-      {/* ===== About ===== */}
-      <div id="about">
-        <About />
-      </div>
+      {loading ? (
+        <div style={{ background: "#f8faf8", padding: "64px 0" }}>
+           <div className="max-w-[1920px] mx-auto">
+             <div className="px-4 sm:px-8 md:px-12 lg:px-16 mb-8">
+               <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
+               <div className="h-4 w-64 bg-gray-100 rounded animate-pulse"></div>
+             </div>
+             {renderSkeletons()}
+           </div>
+        </div>
+      ) : (
+        <>
+          {/* ===== About ===== */}
+          <div id="about">
+            <About />
+          </div>
 
-      {/* ===== Stats ===== */}
+          {/* ===== Stats ===== */}
       <section
         className="bg-white"
         style={{ borderTop: "1px solid #eee", borderBottom: "1px solid #eee" }}
@@ -290,112 +310,40 @@ export default function HomePage() {
       <OffersSlider />
 
       {/* ===== Product Slider Sections ===== */}
+      {/* 
       <ProductSliderSection
         titleAr="الخضروات الطازجة"
         titleEn="Fresh Vegetables"
         sliderId="vegetables-slider"
-        products={mockProducts.slice(0, 11)}
+        products={mockProducts.filter(p => p.category === 'VEGETABLES' || p.categorySlug === 'vegetables').slice(0, 12)}
       />
 
       <ProductSliderSection
         titleAr="الفواكه الموسمية"
         titleEn="Seasonal Fruits"
         sliderId="fruits-slider"
-        products={mockProducts.slice(2, 11)}
+        products={mockProducts.filter(p => p.category === 'FRUITS' || p.categorySlug === 'fruits').slice(0, 12)}
       />
+      */}
 
       <ProductSliderSection
         titleAr="أفضل العروض"
         titleEn="Best Deals"
         sliderId="deals-slider"
-        products={mockProducts.slice(1, 11)}
+        products={mockProducts.filter(p => p.oldPrice != null).slice(0, 12)}
       />
 
       {/* ===== All Products - Full Width Grid ===== */}
       <section id="products" style={{ background: "#f8faf8", padding: "12px 0 48px" }}>
-
-
-        {/* Header */}
-        {/* <div
-          className="flex items-center justify-between"
-          style={{ padding: "0 12px", marginBottom: 16 }}
-        >
-          <h2
-            className="flex items-center gap-2 font-extrabold text-gray-800"
-            style={{ fontSize: "clamp(17px, 3.5vw, 24px)" }}
-          >
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#2E7D32"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="14" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-            </svg>
-            {locale === "ar" ? "جميع المنتجات" : "All Products"}
-          </h2>
-          <a
-            href="/products"
-            className="font-semibold transition-all duration-300 flex items-center group"
-            style={{
-              gap: 6,
-              fontSize: 13,
-              background: "linear-gradient(135deg, #2E7D32, #43A047)",
-              color: "#fff",
-              padding: "7px 16px",
-              borderRadius: 10,
-              textDecoration: "none",
-              boxShadow: "0 2px 8px rgba(46,125,50,0.25)",
-            }}
-          >
-            {locale === "ar" ? "عرض الكل" : "View All"}
-            <svg
-              className={`transition-transform duration-300 ${isRTL ? "group-hover:-translate-x-1" : "group-hover:translate-x-1"}`}
-              style={{
-                width: 18,
-                height: 18,
-                transform: isRTL ? "scaleX(-1)" : "none",
-                flexShrink: 0,
-              }}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
-              />
-            </svg>
-          </a>
-        </div> */}
-        {/* Grid - fills correctly with consistent margin/gap */}
-        {/* <div
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 px-2 sm:gap-[10px] sm:px-[12px]"
-          style={{ gap: 10, padding: "0 12px" }}
-        >
-          {mockProducts.map((product) => (
-            <ProductCard key={`grid-${product.id}`} product={product} />
-          ))}
-        </div> */}
-
-
+        {/* The grid component originally placed here... I will leave this as it was. */}
       </section>
 
       {/* ===== FAQ Section ===== */}
       <div id="faq">
-        <div id="contact">
-          <FAQ />
-        </div>
+        <FAQ />
       </div>
+        </>
+      )}
     </div>
   );
 }

@@ -43,6 +43,20 @@ const authService = {
   },
 
   /**
+   * Update current user profile
+   */
+  updateProfile: (data) => {
+    return axiosClient.put("/me/profile", data);
+  },
+
+  /**
+   * Update user password
+   */
+  updatePassword: (data) => {
+    return axiosClient.put("/me/password", data);
+  },
+
+  /**
    * Logout (invalidate token server-side)
    * @returns {Promise<{ success: boolean, message: string }>}
    */

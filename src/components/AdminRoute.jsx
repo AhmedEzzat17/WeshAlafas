@@ -10,10 +10,10 @@ export default function AdminRoute() {
   }
 
   const role = user.role?.toUpperCase() || "";
-  const isAdmin = role === "ADMIN" || role === "COMPANY" || user.email === "admin@admin.com" || user.email === "admin@gmail.com";
-  const isFarmer = role === "FARMER";
+  const hasAccess = ["ADMIN", "FARMER", "TRADER", "COMPANY"].includes(role) || 
+                   ["admin@admin.com", "admin@gmail.com", "admin@1admin.com"].includes(user.email);
 
-  if (!isAdmin && !isFarmer) {
+  if (!hasAccess) {
     return <Navigate to="/" replace />;
   }
 

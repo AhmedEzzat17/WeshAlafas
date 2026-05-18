@@ -1,8 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
-import { useDashboardData } from "../shared/DashboardDataContext";
-import { ArrowRight, ArrowLeft, Save, Layers } from "lucide-react";
+import { categoriesService } from "../../service/api";
+import { 
+  ArrowRight, 
+  ArrowLeft, 
+  Save, 
+  Loader2, 
+  Upload, 
+  CheckCircle2, 
+  Image as ImageIcon 
+} from "lucide-react";
+import { getImageUrl } from "../../utils/imageUrl";
+import toast from "react-hot-toast";
 
 export default function CategoryForm() {
   const { locale, direction } = useLanguage();
@@ -10,92 +20,211 @@ export default function CategoryForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(id);
-  const { getCategoryById, addCategory, updateCategory } = useDashboardData();
 
-  const existing = isEditing ? getCategoryById(id) : null;
+  const [loading, setLoading] = useState(isEditing);
+  const [submitting, setSubmitting] = useState(false);
+  
+  const fileInputRef = useRef(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
-  const [form, setForm] = useState(() => {
-    if (existing) {
-      return { nameAr: existing.nameAr, nameEn: existing.nameEn, descAr: existing.descAr || "", descEn: existing.descEn || "" };
-    }
-    return { nameAr: "", nameEn: "", descAr: "", descEn: "" };
+  const [formData, setFormData] = useState({
+    name_en: "",
+    name_ar: "",
+    description_en: "",
+    description_ar: "",
+    is_active: true
   });
 
-  // If editing but item not found, redirect
-  if (isEditing && !existing) {
-    navigate("/dashboard/categories");
-    return null;
-  }
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.nameEn.trim() && !form.nameAr.trim()) return;
+  useEffect(() => {
     if (isEditing) {
-      updateCategory(Number(id), form);
-    } else {
-      addCategory(form);
+      fetchCategory();
     }
-    navigate("/dashboard/categories");
+  }, [id]);
+
+  const fetchCategory = async () => {
+    setLoading(true);
+    try {
+      const res = await categoriesService.getById(id);
+      if (res.success && res.data) {
+        const category = res.data;
+        setImagePreview(getImageUrl(category.image) || null);
+        setFormData({
+          name_en: typeof category.name === 'object' ? (category.name?.en || "") : (category.name_en || category.name || ""),
+          name_ar: typeof category.name === 'object' ? (category.name?.ar || "") : (category.name_ar || ""),
+          description_en: typeof category.description === 'object' ? (category.description?.en || "") : (category.description_en || category.description || ""),
+          description_ar: typeof category.description === 'object' ? (category.description?.ar || "") : (category.description_ar || ""),
+          is_active: category.is_active ?? true
+        });
+      } else {
+        toast.error(locale === "ar" ? "لم يتم العثور على التصنيف" : "Category not found");
+        navigate("/dashboard/categories");
+      }
+    } catch (err) {
+      toast.error(locale === "ar" ? "فشل تحميل التصنيف" : "Failed to load category");
+      navigate("/dashboard/categories");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    
+    try {
+      const data = new FormData();
+      data.append("name_en", formData.name_en);
+      data.append("name_ar", formData.name_ar);
+      data.append("description_en", formData.description_en);
+      data.append("description_ar", formData.description_ar);
+      data.append("is_active", formData.is_active ? 1 : 0);
+      
+      if (imageFile) {
+        data.append("image", imageFile);
+      }
+
+      const res = isEditing 
+        ? await categoriesService.update(id, data)
+        : await categoriesService.create(data);
+        
+      if (res.success) {
+        toast.success(locale === "ar" ? "تم الحفظ بنجاح" : "Category saved successfully");
+        navigate("/dashboard/categories");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(locale === "ar" ? "فشل الحفظ" : "Failed to save");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
 
+  if (loading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "50vh" }}>
+        <Loader2 className="animate-spin" size={40} style={{ color: "#2E7D32" }} />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto" }}>
+    <div style={{ maxWidth: 700, margin: "0 auto", paddingBottom: 40 }} className="dashboard-animate-in">
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
         <button onClick={() => navigate("/dashboard/categories")} className="dashboard-btn dashboard-btn--outline" style={{ padding: "8px 12px", borderRadius: 10 }}>
           <BackIcon size={18} />
         </button>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: "#1a1a1a", marginBottom: 4 }}>
-            {isEditing ? (locale === "ar" ? "تعديل الصنف" : "Edit Category") : (locale === "ar" ? "إضافة صنف جديد" : "Add New Category")}
+            {isEditing ? (locale === "ar" ? "تعديل التصنيف" : "Edit Category") : (locale === "ar" ? "إضافة تصنيف جديد" : "Add New Category")}
           </h1>
           <p style={{ fontSize: 14, color: "#94A3B8" }}>
-            {isEditing ? (locale === "ar" ? "قم بتعديل بيانات الصنف" : "Update category details") : (locale === "ar" ? "أدخل بيانات الصنف الجديد" : "Enter the new category details")}
+            {isEditing ? (locale === "ar" ? "قم بتحديث بيانات هذا التصنيف." : "Update category details.") : (locale === "ar" ? "أدخل بيانات التصنيف لإنشائه." : "Enter category details to create it.")}
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="dashboard-panel">
-          <div className="dashboard-panel-header">
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Layers size={20} color="#2E7D32" />
-              <h3 className="dashboard-panel-title">{locale === "ar" ? "بيانات الصنف" : "Category Details"}</h3>
+      <div className="dashboard-panel" style={{ padding: "32px" }}>
+        <form id="categoryForm" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          
+          {/* Visual Identity Section */}
+          <div style={{ padding: 20, background: "#F8FAFC", borderRadius: 12, border: "1px dashed #CBD5E1" }}>
+            <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#475569", marginBottom: 16 }}>
+              {locale === "ar" ? "صورة التصنيف" : "Category Image"}
+            </label>
+            <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                style={{ 
+                  width: 90, height: 90, borderRadius: 12, 
+                  background: imagePreview ? `url(${imagePreview}) center/cover` : "#FFF", 
+                  border: "1px solid #E2E8F0", display: "flex", alignItems: "center", 
+                  justifyContent: "center", cursor: "pointer", flexShrink: 0,
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.02)"
+                }}
+              >
+                {!imagePreview && <Upload size={24} color="#94A3B8" />}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 13, color: "#64748B", marginBottom: 12, lineHeight: 1.5 }}>
+                  {locale === "ar" 
+                    ? "قم برفع صورة تعبر عن التصنيف (يفضل بصيغة PNG أو JPG)" 
+                    : "Upload an image that represents this category (PNG or JPG)"}
+                </p>
+                <button 
+                  type="button" 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="dashboard-btn dashboard-btn--outline"
+                  style={{ padding: "8px 16px", fontSize: 13, height: "auto", borderRadius: 8 }}
+                >
+                  <ImageIcon size={16} />
+                  {locale === "ar" ? "اختر صورة" : "Choose Image"}
+                </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleImageChange} 
+                  accept="image/*" 
+                  style={{ display: "none" }} 
+                />
+              </div>
             </div>
           </div>
-          <div className="dashboard-panel-body" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              <div>
-                <label className="dashboard-label">{locale === "ar" ? "الاسم بالعربية" : "Arabic Name"} *</label>
-                <input className="dashboard-input" value={form.nameAr} onChange={(e) => setForm((p) => ({ ...p, nameAr: e.target.value }))} placeholder={locale === "ar" ? "مثال: فواكه" : "e.g. فواكه"} required />
-              </div>
-              <div>
-                <label className="dashboard-label">{locale === "ar" ? "الاسم بالإنجليزية" : "English Name"} *</label>
-                <input className="dashboard-input" value={form.nameEn} onChange={(e) => setForm((p) => ({ ...p, nameEn: e.target.value }))} placeholder={locale === "ar" ? "مثال: Fruits" : "e.g. Fruits"} required />
-              </div>
-            </div>
-            <div>
-              <label className="dashboard-label">{locale === "ar" ? "الوصف بالعربية" : "Arabic Description"}</label>
-              <textarea className="dashboard-textarea" value={form.descAr} onChange={(e) => setForm((p) => ({ ...p, descAr: e.target.value }))} placeholder={locale === "ar" ? "أدخل وصف الصنف بالعربية" : "Enter Arabic description"} rows={3} />
-            </div>
-            <div>
-              <label className="dashboard-label">{locale === "ar" ? "الوصف بالإنجليزية" : "English Description"}</label>
-              <textarea className="dashboard-textarea" value={form.descEn} onChange={(e) => setForm((p) => ({ ...p, descEn: e.target.value }))} placeholder={locale === "ar" ? "أدخل وصف الصنف بالإنجليزية" : "Enter English description"} rows={3} />
-            </div>
-          </div>
-        </div>
 
-        <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 24 }}>
-          <button type="button" className="dashboard-btn dashboard-btn--outline" onClick={() => navigate("/dashboard/categories")}>
-            {locale === "ar" ? "إلغاء" : "Cancel"}
-          </button>
-          <button type="submit" className="dashboard-btn dashboard-btn--primary">
-            <Save size={18} />
-            {isEditing ? (locale === "ar" ? "حفظ التعديلات" : "Save Changes") : (locale === "ar" ? "إضافة الصنف" : "Add Category")}
-          </button>
-        </div>
-      </form>
+          {/* Core Info Section */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <div>
+              <label className="dashboard-label">{locale === "ar" ? "الاسم (English)" : "Name (English)"} *</label>
+              <input type="text" className="dashboard-input" required value={formData.name_en} onChange={(e) => setFormData({...formData, name_en: e.target.value})} />
+            </div>
+            <div>
+              <label className="dashboard-label">{locale === "ar" ? "الاسم (عربي)" : "Name (Arabic)"} *</label>
+              <input type="text" className="dashboard-input" required value={formData.name_ar} onChange={(e) => setFormData({...formData, name_ar: e.target.value})} />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <div>
+              <label className="dashboard-label">{locale === "ar" ? "الوصف (English)" : "Description (English)"}</label>
+              <textarea className="dashboard-textarea" rows={3} value={formData.description_en} onChange={(e) => setFormData({...formData, description_en: e.target.value})} />
+            </div>
+            <div>
+              <label className="dashboard-label">{locale === "ar" ? "الوصف (عربي)" : "Description (Arabic)"}</label>
+              <textarea className="dashboard-textarea" rows={3} value={formData.description_ar} onChange={(e) => setFormData({...formData, description_ar: e.target.value})} />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px", background: formData.is_active ? "#F0FDF4" : "#F8FAFC", borderRadius: 8, border: `1px solid ${formData.is_active ? "#BBF7D0" : "#E2E8F0"}` }}>
+            <input type="checkbox" id="isActiveToggle" checked={formData.is_active} onChange={(e) => setFormData({...formData, is_active: e.target.checked})} style={{ width: 18, height: 18, cursor: "pointer", accentColor: "#2E7D32" }} />
+            <label htmlFor="isActiveToggle" style={{ fontSize: 14, fontWeight: 600, color: formData.is_active ? "#166534" : "#64748B", cursor: "pointer", userSelect: "none", flex: 1 }}>
+              {locale === "ar" ? "تفعيل وإظهار هذا التصنيف للمستخدمين" : "Activate and show this category to users"}
+            </label>
+          </div>
+
+          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 8, paddingTop: 24, borderTop: "1px solid #F1F5F9" }}>
+            <button type="button" onClick={() => navigate("/dashboard/categories")} className="dashboard-btn dashboard-btn--outline">
+              {locale === "ar" ? "إلغاء" : "Cancel"}
+            </button>
+            <button type="submit" disabled={submitting} className="dashboard-btn dashboard-btn--primary" style={{ gap: 8, padding: "0 24px" }}>
+              {submitting ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              {locale === "ar" ? "حفظ التصنيف" : "Save Category"}
+            </button>
+          </div>
+
+        </form>
+      </div>
     </div>
   );
 }

@@ -71,7 +71,8 @@ export function AuthProvider({ children }) {
     let role = userData.role || "user";
     if (
       userEmail === "admin@gmail.com" ||
-      userEmail === "admin@admin.com"
+      userEmail === "admin@admin.com" ||
+      userEmail === "admin@1admin.com"
     ) {
       role = "admin";
     }
