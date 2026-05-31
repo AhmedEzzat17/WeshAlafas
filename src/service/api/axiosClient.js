@@ -64,10 +64,14 @@ axiosClient.interceptors.request.use(
 
     // Let browser set Content-Type for FormData (includes boundary)
     if (config.data instanceof FormData) {
-      if (config.headers && typeof config.headers.delete === 'function') {
-        config.headers.delete("Content-Type");
-      } else {
-        delete config.headers["Content-Type"];
+      if (config.headers) {
+        if (typeof config.headers.delete === 'function') {
+          config.headers.delete("Content-Type");
+          config.headers.delete("content-type");
+        } else {
+          delete config.headers["Content-Type"];
+          delete config.headers["content-type"];
+        }
       }
     }
 
@@ -102,11 +106,12 @@ axiosClient.interceptors.response.use(
           requestUrl.includes("/auth/login") ||
           requestUrl.includes("/auth/register");
         const wasSkippedAuth = error.config?.skipAuth === true;
+        const hadToken = !!localStorage.getItem("user");
 
         if (!isAuthEndpoint && !wasSkippedAuth) {
           // Expired/invalid token → clear session & redirect
           localStorage.removeItem("user");
-          if (window.location.pathname !== "/login") {
+          if (hadToken && window.location.pathname !== "/login") {
             window.location.href = "/login";
           }
         }

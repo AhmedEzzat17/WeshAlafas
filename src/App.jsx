@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { initFacebookSdk } from "./utils/socialAuth";
 import { LanguageProvider } from "./context/LanguageContext";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
@@ -12,12 +14,15 @@ import ProductDetailsPage from "./pages/ProductDetailsPage";
 import CartPage from "./pages/CartPage";
 import WishlistPage from "./pages/WishlistPage";
 import LoginPage from "./pages/LoginPage";
+import CompleteProfilePage from "./pages/CompleteProfilePage";
 import RegisterPage from "./pages/RegisterPage";
 import AccountTypePage from "./pages/AccountTypePage";
 import ContactPage from "./pages/ContactPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import ProfilePage from "./pages/ProfilePage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 import ScrollToTop from "./components/ScrollToTop";
 import CategoriesPage from "./pages/CategoriesPage";
 import FilterPage from "./pages/FilterPage";
@@ -56,6 +61,10 @@ import DashboardCropForm from "./Dashboard/crops/CropForm";
 import { Toaster } from "react-hot-toast";
 
 function App() {
+  useEffect(() => {
+    initFacebookSdk();
+  }, []);
+
   return (
     <LanguageProvider>
       <AuthProvider>
@@ -129,6 +138,7 @@ function App() {
                       
                       <Route path="/wishlist" element={<WishlistPage />} />
                       <Route path="/login" element={<LoginPage />} />
+                      <Route path="/complete-profile" element={<CompleteProfilePage />} />
                       <Route path="/account-type" element={<AccountTypePage />} />
                       <Route path="/register" element={<RegisterPage />} />
                       <Route path="/products" element={<FilterPage />} />
@@ -140,8 +150,8 @@ function App() {
                       {/* <Route path="/listings" element={<ListingsPage />} /> */}
                       <Route path="/listings/:id" element={<ListingDetailsPage />} />
                       
-                      <Route path="/privacy" element={<PlaceholderPage titleEn="Privacy Policy" titleAr="سياسة الخصوصية" icon="🔒" />} />
-                      <Route path="/terms" element={<PlaceholderPage titleEn="Terms & Conditions" titleAr="الشروط والأحكام" icon="📄" />} />
+                      <Route path="/privacy" element={<PrivacyPage />} />
+                      <Route path="/terms" element={<TermsPage />} />
                       <Route path="*" element={<NotFoundPage />} />
                     </Route>
                   </Routes>

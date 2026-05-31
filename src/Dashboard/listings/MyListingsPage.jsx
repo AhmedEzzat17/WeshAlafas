@@ -57,11 +57,22 @@ export default function MyListingsPage() {
     }
   };
 
-  const filteredListings = listings.filter(l => 
-    l.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    l.crop?.name_ar?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    l.crop?.name_en?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const getTitle = (title) => {
+    if (!title) return "";
+    const arMatch = title.match(/\[ar:(.*?)\]/);
+    const enMatch = title.match(/\[en:(.*?)\]/);
+    if (arMatch || enMatch) {
+      return locale === "ar" ? (arMatch ? arMatch[1] : "") : (enMatch ? enMatch[1] : "");
+    }
+    return title;
+  };
+
+  const filteredListings = listings.filter(l => {
+    const parsedTitle = getTitle(l.title);
+    return parsedTitle.toLowerCase().includes(searchQuery.toLowerCase()) || 
+           l.crop?.name_ar?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           l.crop?.name_en?.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   return (
     <div dir={isRTL ? "rtl" : "ltr"} className="dashboard-animate-in">
@@ -152,7 +163,7 @@ export default function MyListingsPage() {
               <div style={{ padding: 20, flex: 1, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                   <div>
-                    <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>{listing.title}</h3>
+                    <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>{getTitle(listing.title)}</h3>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#2E7D32", fontSize: 13, fontWeight: 600 }}>
                         <Package size={14} />
                         <span>{locale === "ar" ? listing.crop?.name_ar : listing.crop?.name_en}</span>

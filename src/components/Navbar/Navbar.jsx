@@ -468,7 +468,7 @@ export default function Navbar() {
       if (!isAccountDropdownOpen) return;
       const clickedOutsideDesktop = desktopAccountRef.current && !desktopAccountRef.current.contains(e.target);
       const clickedOutsideMobile = mobileAccountRef.current && !mobileAccountRef.current.contains(e.target);
-      
+
       // Close dropdown if click is outside both desktop and mobile dropdowns
       if (clickedOutsideDesktop && clickedOutsideMobile) {
         setIsAccountDropdownOpen(false);
@@ -533,12 +533,12 @@ export default function Navbar() {
     <>
       {/* ==================== NAVBAR ==================== */}
       <header
-        className={`fixed top-0 left-0 right-0 max-w-[1920px] mx-auto z-50 transition-all duration-300 ${isScrolled ? "bg-surface/95 backdrop-blur-md shadow-lg" : "bg-surface shadow-sm"}`}
+        className={`fixed top-0 left-0 right-0 w-full z-50 flex justify-center transition-all duration-300 ${isScrolled ? "bg-surface/95 backdrop-blur-md shadow-lg" : "bg-surface shadow-sm"}`}
         role="banner"
       >
         {/* ========== DESKTOP (lg+) ========== */}
         <nav
-          className="hidden lg:flex items-center max-w-[1320px] mx-auto"
+          className="hidden lg:flex items-center w-full max-w-[1320px]"
           style={{ height: 70, padding: "0 32px", gap: 20 }}
           aria-label={locale === "ar" ? "التنقل الرئيسي" : "Main Navigation"}
         >
@@ -792,7 +792,7 @@ export default function Navbar() {
 
         {/* ========== MOBILE / TABLET (below lg) ========== */}
         <div
-          className="lg:hidden relative transition-all duration-300"
+          className="lg:hidden w-full relative transition-all duration-300"
           style={{ height: isScrolled ? 56 : 110 }}
         >
           {/* Top Row */}

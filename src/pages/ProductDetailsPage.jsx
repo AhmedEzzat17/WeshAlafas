@@ -18,9 +18,12 @@ export default function ProductDetailsPage() {
 
   const [quantity, setQuantity] = useState(() => {
     const cartQty = getCartItemQuantity(id);
+    // Note: product is not yet defined here, so we default to 1.
+    // It will be updated in the useEffect below if needed.
     return cartQty > 0 ? cartQty : 1;
   });
   const [activeImage, setActiveImage] = useState(0);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   const product = mockProducts.find((p) => String(p.id) === String(id));
 
@@ -28,9 +31,16 @@ export default function ProductDetailsPage() {
   if (id !== prevId) {
     setActiveImage(0);
     const cartQty = getCartItemQuantity(id);
-    setQuantity(cartQty > 0 ? cartQty : 1);
+    setQuantity(cartQty > 0 ? cartQty : (product?.minOrderQty || 1));
     setPrevId(id);
   }
+
+  // Ensure initial quantity respects minOrderQty
+  useEffect(() => {
+    if (product && quantity < (product.minOrderQty || 1)) {
+      setQuantity(product.minOrderQty || 1);
+    }
+  }, [product, quantity]);
 
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerPrice, setOfferPrice] = useState("");
@@ -95,8 +105,52 @@ export default function ProductDetailsPage() {
       dir={isRTL ? "rtl" : "ltr"}
       style={{ background: "#f8faf8", paddingBottom: 48 }}
     >
+      {/* Image Modal */}
+      {showImageModal && (
+        <div 
+          style={{ 
+            position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", 
+            background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", padding: 20,
+            opacity: 1, animation: "fadeIn 0.2s ease-out" 
+          }}
+          onClick={() => setShowImageModal(false)}
+        >
+          <div 
+            style={{ 
+              position: "relative", maxWidth: "95vw", maxHeight: "95vh", display: "flex", alignItems: "center", justifyContent: "center",
+              transform: "scale(1)", animation: "zoomIn 0.2s ease-out"
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setShowImageModal(false)}
+              style={{ 
+                position: "absolute", top: -16, right: isRTL ? "auto" : -16, left: isRTL ? -16 : "auto", 
+                background: "#fff", border: "none", color: "#333", cursor: "pointer", 
+                width: 40, height: 40, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)", zIndex: 10, transition: "transform 0.2s"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            <img 
+              src={mainImageSrc} 
+              alt={locale === "ar" ? product.nameAr : product.nameEn} 
+              style={{ 
+                maxWidth: "100%", maxHeight: "85vh", objectFit: "contain", 
+                borderRadius: 24, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+                background: "#fff"
+              }} 
+              onError={(e) => { e.target.src = "/images/fallback.png"; }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Negotiation Modal */}
-      {showOfferModal && (
+      {/* {showOfferModal && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", padding: 20 }}>
           <div style={{ background: "#fff", borderRadius: 24, padding: "32px 28px", width: "100%", maxWidth: 420, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }} className="dashboard-animate-in">
              <h3 style={{ fontSize: 20, fontWeight: 800, color: "#1a1a1a", marginBottom: 8, textAlign: "center" }}>
@@ -150,7 +204,7 @@ export default function ProductDetailsPage() {
              </form>
           </div>
         </div>
-      )}
+      )} */}
       {/* Breadcrumbs */}
       <nav
         className="flex items-center gap-2 flex-wrap text-gray-400 font-medium"
@@ -501,7 +555,7 @@ export default function ProductDetailsPage() {
                     className="font-semibold text-gray-700"
                     style={{ fontSize: 13, marginBottom: 6 }}
                   >
-                    {locale === "ar" ? "وحدة الكمية" : "Unit"}
+                    {locale === "ar" ? "الكمية المتاحة بالوحدة" : "Available Quantity per Unit"}
                   </h4>
                   <span
                     className="inline-flex items-center justify-center border-2 border-primary bg-primary/5 text-primary font-bold"
@@ -539,27 +593,49 @@ export default function ProductDetailsPage() {
                         fontSize: 18,
                         border: "none",
                         background: "none",
+                        opacity: quantity <= (product.minOrderQty || 1) ? 0.5 : 1,
+                        cursor: quantity <= (product.minOrderQty || 1) ? "not-allowed" : "pointer"
                       }}
+                      disabled={quantity <= (product.minOrderQty || 1)}
                       onClick={() => {
-                        const newQty = Math.max(1, quantity - 1);
+                        const newQty = Math.max((product.minOrderQty || 1), quantity - 1);
                         setQuantity(newQty);
                         if (inCart) updateCartQuantity(product.id, newQty);
                       }}
                     >
                       −
                     </button>
-                    <span
-                      className="flex items-center justify-center font-bold bg-gray-50"
+                    <input
+                      type="number"
+                      min={product.minOrderQty || 1}
+                      max={product.stock || 9999}
+                      value={quantity}
+                      onChange={(e) => {
+                        let val = parseInt(e.target.value);
+                        if (isNaN(val)) val = product.minOrderQty || 1;
+                        if (val > (product.stock || 9999)) {
+                          val = product.stock || 9999;
+                          toast.error(locale === "ar" ? `الحد الأقصى للكمية المتاحة هو ${val}` : `Maximum available quantity is ${val}`);
+                        }
+                        if (val < (product.minOrderQty || 1)) {
+                          val = product.minOrderQty || 1;
+                          toast.error(locale === "ar" ? `الحد الأدنى للطلب هو ${val}` : `Minimum order quantity is ${val}`);
+                        }
+                        setQuantity(val);
+                        if (inCart) updateCartQuantity(product.id, val);
+                      }}
+                      className="font-bold bg-gray-50 text-center"
                       style={{
-                        width: 44,
+                        width: 60,
                         height: "100%",
                         fontSize: 15,
+                        border: "none",
                         borderLeft: "2px solid #e8e8e8",
                         borderRight: "2px solid #e8e8e8",
+                        outline: "none",
+                        appearance: "textfield"
                       }}
-                    >
-                      {quantity}
-                    </span>
+                    />
                     <button
                       className="flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
                       style={{
@@ -568,8 +644,16 @@ export default function ProductDetailsPage() {
                         fontSize: 18,
                         border: "none",
                         background: "none",
+                        opacity: quantity >= (product.stock || 9999) ? 0.5 : 1,
+                        cursor: quantity >= (product.stock || 9999) ? "not-allowed" : "pointer"
                       }}
+                      disabled={quantity >= (product.stock || 9999)}
                       onClick={() => {
+                        const maxQty = product.stock || 9999;
+                        if (quantity >= maxQty) {
+                          toast.error(locale === "ar" ? `الحد الأقصى للكمية المتاحة هو ${maxQty}` : `Maximum available quantity is ${maxQty}`);
+                          return;
+                        }
                         const newQty = quantity + 1;
                         setQuantity(newQty);
                         if (inCart) updateCartQuantity(product.id, newQty);
@@ -578,12 +662,24 @@ export default function ProductDetailsPage() {
                       +
                     </button>
                   </div>
+                  {/* <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                    {product.minOrderQty > 1 && (
+                      <p style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 600, margin: 0 }}>
+                        {locale === "ar" ? `أقل كمية للطلب: ${product.minOrderQty}` : `Min order: ${product.minOrderQty}`}
+                      </p>
+                    )}
+                    {product.stock && product.stock !== 9999 && (
+                      <p style={{ fontSize: 12, color: "var(--color-primary)", fontWeight: 700, margin: 0 }}>
+                        {locale === "ar" ? `الكمية المتاحة: ${product.stock}` : `Available: ${product.stock}`}
+                      </p>
+                    )}ال
+                  </div> */}
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="flex mt-auto" style={{ gap: 10 }}>
-                {isTrader && (
+                {/* {isTrader && (
                   <button
                     className="flex items-center justify-center font-bold transition-all duration-300 hover:shadow-lg active:scale-[0.97] cursor-pointer bg-white text-[#2E7D32] border-2 border-[#2E7D32]"
                     style={{
@@ -604,7 +700,7 @@ export default function ProductDetailsPage() {
                     />
                     {locale === "ar" ? "قدم عرض سعر" : "Make an Offer"}
                   </button>
-                )}
+                )} */}
 
                 <button
                   className={`flex-grow flex items-center justify-center font-bold transition-all duration-300 hover:shadow-xl active:scale-[0.97] cursor-pointer ${
@@ -750,8 +846,9 @@ export default function ProductDetailsPage() {
                 <img
                   src={mainImageSrc}
                   alt={locale === "ar" ? product.nameAr : product.nameEn}
-                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105 cursor-pointer"
                   style={{ borderRadius: 16 }}
+                  onClick={() => setShowImageModal(true)}
                   onError={(e) => {
                     e.target.src = "/images/fallback.png";
                   }}
@@ -833,7 +930,7 @@ export default function ProductDetailsPage() {
                 onClick={() => {
                   document
                     .getElementById("related-slider")
-                    .scrollBy({ left: isRTL ? -250 : 250, behavior: "smooth" });
+                    .scrollBy({ left: 250, behavior: "smooth" });
                 }}
               >
                 <svg
@@ -864,7 +961,7 @@ export default function ProductDetailsPage() {
                 onClick={() => {
                   document
                     .getElementById("related-slider")
-                    .scrollBy({ left: isRTL ? 250 : -250, behavior: "smooth" });
+                    .scrollBy({ left: -250, behavior: "smooth" });
                 }}
               >
                 <svg

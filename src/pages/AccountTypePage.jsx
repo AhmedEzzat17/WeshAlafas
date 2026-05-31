@@ -60,7 +60,7 @@ export default function AccountTypePage() {
     {
       id: "company",
       titleEn: "Entity / Establishment",
-      titleAr: "منشأة / شركة",
+      titleAr: "منشأة / فنادق",
       descEn: "Register your business for bulk orders and partnerships.",
       descAr: "سجل منشأتك للطلبات الكبيرة والشراكات التجارية الواسعة.",
       icon: <EntityIcon />,

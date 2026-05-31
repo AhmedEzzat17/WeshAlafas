@@ -5,7 +5,14 @@ const FARMER_ENDPOINT = "/farmer/offers";
 
 const offersService = {
   /**
-   * Get all offers (public or tenant-based depending on auth)
+   * Get all public offers
+   */
+  getAllPublic: (params = {}) => {
+    return axiosClient.get(ENDPOINT, { params });
+  },
+
+  /**
+   * Get all offers (tenant-based depending on auth)
    */
   getAll: (params = {}) => {
     return axiosClient.get(FARMER_ENDPOINT, { params });

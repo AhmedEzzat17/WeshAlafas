@@ -23,6 +23,7 @@ export default function CategoryForm() {
 
   const [loading, setLoading] = useState(isEditing);
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
   
   const fileInputRef = useRef(null);
   const [imageFile, setImageFile] = useState(null);
@@ -71,7 +72,19 @@ export default function CategoryForm() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 10240 * 1024) {
+        toast.error(
+          locale === "ar"
+            ? "حجم الصورة كبير جداً! يجب ألا يتجاوز حجم الصورة 10 ميجابايت."
+            : "Image size is too large! The image must not exceed 10MB."
+        );
+        e.target.value = "";
+        return;
+      }
       setImageFile(file);
+      if (errors.image) {
+        setErrors(prev => ({ ...prev, image: null }));
+      }
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result);
       reader.readAsDataURL(file);
@@ -80,15 +93,32 @@ export default function CategoryForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
+    
+    if (imageFile && imageFile.size > 10240 * 1024) {
+      const errMsg = locale === "ar"
+        ? "حجم الصورة كبير جداً! الحد الأقصى هو 10 ميجابايت."
+        : "The image must not be greater than 10MB.";
+      toast.error(errMsg);
+      setErrors({ image: [errMsg] });
+      return;
+    }
     setSubmitting(true);
     
     try {
       const data = new FormData();
+      // Support both styles: flat and nested arrays (translatable)
       data.append("name_en", formData.name_en);
       data.append("name_ar", formData.name_ar);
-      data.append("description_en", formData.description_en);
-      data.append("description_ar", formData.description_ar);
-      data.append("is_active", formData.is_active ? 1 : 0);
+      data.append("name[en]", formData.name_en);
+      data.append("name[ar]", formData.name_ar);
+      
+      data.append("description_en", formData.description_en || "");
+      data.append("description_ar", formData.description_ar || "");
+      data.append("description[en]", formData.description_en || "");
+      data.append("description[ar]", formData.description_ar || "");
+      
+      data.append("is_active", formData.is_active ? "1" : "0");
       
       if (imageFile) {
         data.append("image", imageFile);
@@ -101,10 +131,21 @@ export default function CategoryForm() {
       if (res.success) {
         toast.success(locale === "ar" ? "تم الحفظ بنجاح" : "Category saved successfully");
         navigate("/dashboard/categories");
+      } else {
+        throw res;
       }
     } catch (err) {
-      console.error(err);
-      toast.error(locale === "ar" ? "فشل الحفظ" : "Failed to save");
+      console.error("Category save error:", err);
+      if (err.errors) {
+        setErrors(err.errors);
+        // Combine validation error messages to show in toast
+        const errorMsgs = Object.entries(err.errors)
+          .map(([field, msg]) => `${field}: ${Array.isArray(msg) ? msg[0] : msg}`)
+          .join(" | ");
+        toast.error(errorMsgs || (locale === "ar" ? "يرجى تصحيح الأخطاء" : "Please correct the errors"));
+      } else {
+        toast.error(err.message || (locale === "ar" ? "فشل الحفظ" : "Failed to save"));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -181,28 +222,87 @@ export default function CategoryForm() {
                 />
               </div>
             </div>
+            {errors.image && (
+              <p style={{ color: "#EF4444", fontSize: 12, marginTop: 12, display: "block" }}>
+                {Array.isArray(errors.image) ? errors.image[0] : errors.image}
+              </p>
+            )}
           </div>
 
           {/* Core Info Section */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
             <div>
               <label className="dashboard-label">{locale === "ar" ? "الاسم (English)" : "Name (English)"} *</label>
-              <input type="text" className="dashboard-input" required value={formData.name_en} onChange={(e) => setFormData({...formData, name_en: e.target.value})} />
+              <input 
+                type="text" 
+                className="dashboard-input" 
+                required 
+                value={formData.name_en} 
+                onChange={(e) => {
+                  setFormData({...formData, name_en: e.target.value});
+                  if (errors.name_en || errors["name.en"]) setErrors(prev => ({ ...prev, name_en: null, "name.en": null }));
+                }} 
+              />
+              {(errors.name_en || errors["name.en"]) && (
+                <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>
+                  {errors.name_en || errors["name.en"]}
+                </p>
+              )}
             </div>
             <div>
               <label className="dashboard-label">{locale === "ar" ? "الاسم (عربي)" : "Name (Arabic)"} *</label>
-              <input type="text" className="dashboard-input" required value={formData.name_ar} onChange={(e) => setFormData({...formData, name_ar: e.target.value})} />
+              <input 
+                type="text" 
+                className="dashboard-input" 
+                required 
+                value={formData.name_ar} 
+                onChange={(e) => {
+                  setFormData({...formData, name_ar: e.target.value});
+                  if (errors.name_ar || errors["name.ar"]) setErrors(prev => ({ ...prev, name_ar: null, "name.ar": null }));
+                }} 
+              />
+              {(errors.name_ar || errors["name.ar"]) && (
+                <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>
+                  {errors.name_ar || errors["name.ar"]}
+                </p>
+              )}
             </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
             <div>
               <label className="dashboard-label">{locale === "ar" ? "الوصف (English)" : "Description (English)"}</label>
-              <textarea className="dashboard-textarea" rows={3} value={formData.description_en} onChange={(e) => setFormData({...formData, description_en: e.target.value})} />
+              <textarea 
+                className="dashboard-textarea" 
+                rows={3} 
+                value={formData.description_en} 
+                onChange={(e) => {
+                  setFormData({...formData, description_en: e.target.value});
+                  if (errors.description_en || errors["description.en"]) setErrors(prev => ({ ...prev, description_en: null, "description.en": null }));
+                }} 
+              />
+              {(errors.description_en || errors["description.en"]) && (
+                <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>
+                  {errors.description_en || errors["description.en"]}
+                </p>
+              )}
             </div>
             <div>
               <label className="dashboard-label">{locale === "ar" ? "الوصف (عربي)" : "Description (Arabic)"}</label>
-              <textarea className="dashboard-textarea" rows={3} value={formData.description_ar} onChange={(e) => setFormData({...formData, description_ar: e.target.value})} />
+              <textarea 
+                className="dashboard-textarea" 
+                rows={3} 
+                value={formData.description_ar} 
+                onChange={(e) => {
+                  setFormData({...formData, description_ar: e.target.value});
+                  if (errors.description_ar || errors["description.ar"]) setErrors(prev => ({ ...prev, description_ar: null, "description.ar": null }));
+                }} 
+              />
+              {(errors.description_ar || errors["description.ar"]) && (
+                <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>
+                  {errors.description_ar || errors["description.ar"]}
+                </p>
+              )}
             </div>
           </div>
 

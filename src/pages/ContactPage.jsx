@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import logo from "../assets/logo.png";
 import authBg from "../assets/auth-bg.png";
+import { ContactFormSkeleton } from "../components/Skeleton";
 
 /* ====== SVG Icons ====== */
 const MailIcon = () => (
@@ -39,6 +40,12 @@ export default function ContactPage() {
   const [message, setMessage] = useState("");
   const [focusedField, setFocusedField] = useState(null);
   const [status, setStatus] = useState("idle");
+  const [isPageLoading, setIsPageLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsPageLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,6 +71,7 @@ export default function ContactPage() {
       style={{ minHeight: "calc(100vh - 180px)" }}
     >
       <style>{`
+        /* Animations */
         @keyframes authSlideUp {
           from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
@@ -84,6 +92,80 @@ export default function ContactPage() {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+
+        /* Responsive Layout Classes */
+        .contact-page-wrapper {
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 40px 20px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          min-height: calc(100vh - 200px);
+        }
+
+        .contact-card {
+          display: grid;
+          grid-template-columns: 1fr;
+          border-radius: 24px;
+          overflow: hidden;
+          background: #fff;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05);
+          width: 100%;
+        }
+
+        .contact-form-side {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 32px 24px;
+          order: 2;
+        }
+
+        .contact-image-side {
+          display: none;
+          position: relative;
+          overflow: hidden;
+          min-height: 400px;
+          order: 1;
+        }
+
+        .contact-input-row {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+
+        /* Tablet and Desktop Responsiveness */
+        @media (min-width: 768px) {
+          .contact-page-wrapper {
+            padding: 60px 32px;
+          }
+          .contact-form-side {
+            padding: 40px 32px;
+          }
+          .contact-input-row {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+
+        @media (min-width: 1024px) {
+          .contact-card {
+            grid-template-columns: 1fr 1fr;
+            min-height: 600px;
+          }
+          .contact-form-side {
+            padding: 48px 56px;
+            order: 1;
+          }
+          .contact-image-side {
+            display: flex;
+            order: 2;
+            min-height: 100%;
+          }
+        }
+
+        /* Utilities */
         .auth-slide-up { animation: authSlideUp 0.7s ease-out forwards; }
         .auth-fade-in { animation: authFadeIn 0.8s ease-out forwards; }
         .auth-float { animation: authFloat 6s ease-in-out infinite; }
@@ -92,18 +174,39 @@ export default function ContactPage() {
           background-size: 200% 100%;
           animation: shimmer 3s ease-in-out infinite;
         }
+
+        /* Form Elements */
         .auth-input-group {
           position: relative;
           transition: all 0.3s ease;
+          margin-bottom: 20px;
         }
         .auth-input-group.focused {
           transform: translateY(-2px);
+        }
+        .auth-input-border {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          border-radius: 14px;
+          border: 1.5px solid #E2E8F0;
+          background: #F9FAFB;
+          transition: all 0.3s ease;
+        }
+        .auth-input-border.single-line {
+          height: 50px;
+          padding: 0 16px;
+        }
+        .auth-input-border.multi-line {
+          padding: 12px 16px;
         }
         .auth-input-group.focused .auth-input-border {
           border-color: #2E7D32;
           box-shadow: 0 0 0 3px rgba(46,125,50,0.1);
         }
-        .auth-input-group .auth-input-icon {
+        .auth-input-icon {
+          color: #9CA3AF;
+          display: flex;
           transition: color 0.3s ease;
         }
         .auth-input-group.focused .auth-input-icon {
@@ -113,6 +216,25 @@ export default function ContactPage() {
           position: relative;
           overflow: hidden;
           transition: all 0.3s ease;
+          width: 100%;
+          height: 52px;
+          border-radius: 14px;
+          border: none;
+          color: #fff;
+          font-size: 16px;
+          font-weight: 700;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+        }
+        .auth-submit-btn.idle {
+          background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%);
+        }
+        .auth-submit-btn.loading {
+          background: linear-gradient(135deg, #9CA3AF 0%, #6B7280 100%);
+          cursor: not-allowed;
         }
         .auth-submit-btn::before {
           content: '';
@@ -134,301 +256,207 @@ export default function ContactPage() {
         .auth-submit-btn:active {
           transform: translateY(0);
         }
+        
+        .contact-title {
+          font-size: clamp(24px, 4vw, 32px);
+          font-weight: 700;
+          color: #1a1a1a;
+          margin-bottom: 8px;
+        }
+        .contact-desc {
+          font-size: clamp(14px, 2vw, 15px);
+          color: #6B7280;
+          margin-bottom: 32px;
+          line-height: 1.6;
+        }
+        .input-field {
+          flex: 1;
+          border: none;
+          outline: none;
+          background: transparent;
+          font-size: 14px;
+          color: #1a1a1a;
+          width: 100%;
+        }
       `}</style>
 
-      <div
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          padding: "20px 20px",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "calc(100vh - 200px)",
-        }}
-      >
-        <div
-          className="auth-slide-up"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr",
-            borderRadius: 24,
-            overflow: "hidden",
-            background: "#fff",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)",
-            minHeight: 500,
-            width: "100%",
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr",
-            }}
-            className="lg:!grid-cols-2"
-          >
-            {/* === Form Side === */}
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                padding: "32px 40px",
-                order: 1,
-              }}
-              className="auth-slide-up"
-            >
-              {/* Title */}
-              <h1
-                style={{
-                  fontSize: 28,
-                  fontWeight: 700,
-                  color: "#1a1a1a",
-                  marginBottom: 6,
-                  textAlign: isRTL ? "right" : "left",
-                }}
-              >
-                {isRTL ? "تواصل معنا" : "Contact Us"}
-              </h1>
-              <p
-                style={{
-                  fontSize: 14,
-                  color: "#6B7280",
-                  marginBottom: 28,
-                  textAlign: isRTL ? "right" : "left",
-                  lineHeight: 1.6,
-                }}
-              >
-                {isRTL
-                  ? "نحن هنا لمساعدتك والإجابة على أي استفسارات تخص منتجاتنا وخدماتنا."
-                  : "We are here to assist you and answer any questions about our products and services."}
-              </p>
+      <div className="contact-page-wrapper">
+        <div className="contact-card auth-slide-up">
+          
+          {/* === Form Side === */}
+          <div className="contact-form-side">
+            {isPageLoading ? (
+              <ContactFormSkeleton />
+            ) : (
+              <>
+                <h1 className="contact-title" style={{ textAlign: isRTL ? "right" : "left" }}>
+                  {isRTL ? "تواصل معنا" : "Contact Us"}
+                </h1>
+                <p className="contact-desc" style={{ textAlign: isRTL ? "right" : "left" }}>
+                  {isRTL
+                    ? "نحن هنا لمساعدتك والإجابة على أي استفسارات تخص منتجاتنا وخدماتنا."
+                    : "We are here to assist you and answer any questions about our products and services."}
+                </p>
 
-              {/* Error Message */}
-              {status === "error" && (
-                <div
-                  style={{
-                    padding: "12px 16px",
-                    borderRadius: 12,
-                    background: "#FEF2F2",
-                    border: "1px solid #FECACA",
-                    color: "#DC2626",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    marginBottom: 18,
-                    textAlign: isRTL ? "right" : "left",
-                  }}
-                >
-                  {isRTL ? "يرجى ملء جميع الحقول المطلوبة" : "Please fill in all required fields"}
-                </div>
-              )}
+            {/* Error Message */}
+            {status === "error" && (
+              <div style={{ padding: "12px 16px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626", fontSize: 13, fontWeight: 500, marginBottom: 20, textAlign: isRTL ? "right" : "left" }}>
+                {isRTL ? "يرجى ملء جميع الحقول المطلوبة" : "Please fill in all required fields"}
+              </div>
+            )}
 
-              {/* Success Message */}
-              {status === "success" && (
-                <div
-                  style={{
-                    padding: "14px 16px",
-                    borderRadius: 12,
-                    background: "#F0FDF4",
-                    border: "1px solid #BBF7D0",
-                    color: "#166534",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    marginBottom: 18,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {isRTL ? "تم إرسال رسالتك بنجاح! سنرد عليك قريباً." : "Message sent successfully! We will get back to you soon."}
-                </div>
-              )}
+            {/* Success Message */}
+            {status === "success" && (
+              <div style={{ padding: "14px 16px", borderRadius: 12, background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#166534", fontSize: 14, fontWeight: 600, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{isRTL ? "تم إرسال رسالتك بنجاح! سنرد عليك قريباً." : "Message sent successfully! We will get back to you soon."}</span>
+              </div>
+            )}
 
-              {/* Form */}
-              <form onSubmit={handleSubmit}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  {/* Name */}
-                  <div
-                    className={`auth-input-group ${focusedField === "name" ? "focused" : ""}`}
-                    style={{ marginBottom: 18 }}
-                  >
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                      {isRTL ? "الاسم كامل" : "Full Name"}
-                    </label>
-                    <div className="auth-input-border" style={{ display: "flex", alignItems: "center", gap: 12, height: 50, borderRadius: 14, border: "1.5px solid #E2E8F0", padding: "0 16px", background: "#F9FAFB", transition: "all 0.3s ease" }}>
-                      <span className="auth-input-icon" style={{ color: "#9CA3AF", display: "flex" }}><UserIcon /></span>
-                      <input type="text" value={name} onChange={(e) => setName(e.target.value)} onFocus={() => setFocusedField("name")} onBlur={() => setFocusedField(null)} placeholder={isRTL ? "أدخل اسمك" : "Enter your name"} style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 14, color: "#1a1a1a" }} />
-                    </div>
-                  </div>
-
-                  {/* Phone */}
-                  <div
-                    className={`auth-input-group ${focusedField === "phone" ? "focused" : ""}`}
-                    style={{ marginBottom: 18 }}
-                  >
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                      {isRTL ? "رقم الهاتف" : "Phone Number"}
-                    </label>
-                    <div className="auth-input-border" style={{ display: "flex", alignItems: "center", gap: 12, height: 50, borderRadius: 14, border: "1.5px solid #E2E8F0", padding: "0 16px", background: "#F9FAFB", transition: "all 0.3s ease" }}>
-                      <span className="auth-input-icon" style={{ color: "#9CA3AF", display: "flex" }}><PhoneIcon /></span>
-                      <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} onFocus={() => setFocusedField("phone")} onBlur={() => setFocusedField(null)} placeholder={isRTL ? "أدخل رقم هاتفك" : "Enter phone number"} style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 14, color: "#1a1a1a" }} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div
-                  className={`auth-input-group ${focusedField === "email" ? "focused" : ""}`}
-                  style={{ marginBottom: 18 }}
-                >
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                    {isRTL ? "البريد الإلكتروني" : "Email Address"} <span style={{color: "#DC2626"}}>*</span>
+            {/* Form */}
+            <form onSubmit={handleSubmit}>
+              <div className="contact-input-row">
+                {/* Name */}
+                <div className={`auth-input-group ${focusedField === "name" ? "focused" : ""}`}>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8, textAlign: isRTL ? "right" : "left" }}>
+                    {isRTL ? "الاسم كامل" : "Full Name"}
                   </label>
-                  <div className="auth-input-border" style={{ display: "flex", alignItems: "center", gap: 12, height: 50, borderRadius: 14, border: "1.5px solid #E2E8F0", padding: "0 16px", background: "#F9FAFB", transition: "all 0.3s ease" }}>
-                    <span className="auth-input-icon" style={{ color: "#9CA3AF", display: "flex" }}><MailIcon /></span>
-                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} onFocus={() => setFocusedField("email")} onBlur={() => setFocusedField(null)} placeholder={isRTL ? "أدخل بريدك الإلكتروني" : "Enter your email address"} style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 14, color: "#1a1a1a" }} />
+                  <div className="auth-input-border single-line">
+                    <span className="auth-input-icon"><UserIcon /></span>
+                    <input 
+                      type="text" 
+                      value={name} 
+                      onChange={(e) => setName(e.target.value)} 
+                      onFocus={() => setFocusedField("name")} 
+                      onBlur={() => setFocusedField(null)} 
+                      placeholder={isRTL ? "أدخل اسمك" : "Enter your name"} 
+                      className="input-field" 
+                    />
                   </div>
                 </div>
 
-                {/* Message */}
-                <div
-                  className={`auth-input-group ${focusedField === "message" ? "focused" : ""}`}
-                  style={{ marginBottom: 26 }}
-                >
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                    {isRTL ? "رسالتك" : "Message"} <span style={{color: "#DC2626"}}>*</span>
+                {/* Phone */}
+                <div className={`auth-input-group ${focusedField === "phone" ? "focused" : ""}`}>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8, textAlign: isRTL ? "right" : "left" }}>
+                    {isRTL ? "رقم الهاتف" : "Phone Number"}
                   </label>
-                  <div className="auth-input-border" style={{ display: "flex", alignItems: "flex-start", gap: 12, borderRadius: 14, border: "1.5px solid #E2E8F0", padding: "12px 16px", background: "#F9FAFB", transition: "all 0.3s ease" }}>
-                    <span className="auth-input-icon" style={{ color: "#9CA3AF", display: "flex", marginTop: 2 }}><MessageIcon /></span>
-                    <textarea value={message} onChange={(e) => setMessage(e.target.value)} onFocus={() => setFocusedField("message")} onBlur={() => setFocusedField(null)} placeholder={isRTL ? "كيف يمكننا مساعدتك؟" : "How can we help you?"} style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 14, color: "#1a1a1a", minHeight: 100, resize: "vertical" }} />
+                  <div className="auth-input-border single-line">
+                    <span className="auth-input-icon"><PhoneIcon /></span>
+                    <input 
+                      type="tel" 
+                      value={phone} 
+                      onChange={(e) => setPhone(e.target.value)} 
+                      onFocus={() => setFocusedField("phone")} 
+                      onBlur={() => setFocusedField(null)} 
+                      placeholder={isRTL ? "أدخل رقم هاتفك" : "Enter phone number"} 
+                      className="input-field" 
+                      dir="ltr"
+                    />
                   </div>
                 </div>
+              </div>
 
-                {/* Submit */}
-                <button type="submit" className="auth-submit-btn" disabled={status === "loading"} style={{ width: "100%", height: 52, borderRadius: 14, border: "none", background: status === "loading" ? "linear-gradient(135deg, #9CA3AF 0%, #6B7280 100%)" : "linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%)", color: "#fff", fontSize: 16, fontWeight: 700, cursor: status === "loading" ? "not-allowed" : "pointer", letterSpacing: 0.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-                  {status === "loading" && (
-                    <span style={{ width: 20, height: 20, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" }} />
-                  )}
-                  {status === "loading" ? (isRTL ? "جاري الإرسال..." : "Sending...") : (isRTL ? "إرسال الرسالة" : "Send Message")}
-                </button>
-              </form>
-            </div>
-
-            {/* === Image Side === */}
-            <div
-              className="hidden lg:flex auth-fade-in"
-              style={{
-                position: "relative",
-                overflow: "hidden",
-                minHeight: 580,
-                order: 2,
-              }}
-            >
-              <img
-                src={authBg}
-                alt=""
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "linear-gradient(135deg, rgba(14,53,20,0.85) 0%, rgba(46,125,50,0.7) 50%, rgba(20,83,45,0.85) 100%)",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  bottom: 0,
-                  width: 120,
-                  ...(isRTL
-                    ? { left: -1, background: "linear-gradient(to right, #fff 0%, #fff 50%, transparent 100%)", clipPath: "polygon(0 0, 100% 8%, 60% 100%, 0% 100%)" }
-                    : { right: -1, background: "linear-gradient(to left, #fff 0%, #fff 50%, transparent 100%)", clipPath: "polygon(40% 0, 100% 0, 100% 100%, 0% 92%)" }),
-                }}
-              />
-              <div
-                style={{
-                  position: "relative",
-                  zIndex: 2,
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  padding: "48px 40px",
-                  textAlign: "center",
-                  width: "100%",
-                }}
-              >
-                <div
-                  className="auth-float"
-                  style={{
-                    width: 100,
-                    height: 100,
-                    borderRadius: 24,
-                    background: "rgba(255,255,255,0.15)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.25)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 28,
-                    boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
-                  }}
-                >
-                  <img
-                    src={logo}
-                    alt="WashAlafas"
-                    style={{ width: 70, height: 70, objectFit: "contain" }}
+              {/* Email */}
+              <div className={`auth-input-group ${focusedField === "email" ? "focused" : ""}`}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8, textAlign: isRTL ? "right" : "left" }}>
+                  {isRTL ? "البريد الإلكتروني" : "Email Address"} <span style={{color: "#DC2626"}}>*</span>
+                </label>
+                <div className="auth-input-border single-line">
+                  <span className="auth-input-icon"><MailIcon /></span>
+                  <input 
+                    type="email" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    onFocus={() => setFocusedField("email")} 
+                    onBlur={() => setFocusedField(null)} 
+                    placeholder={isRTL ? "أدخل بريدك الإلكتروني" : "Enter your email address"} 
+                    className="input-field" 
+                    dir="ltr"
                   />
                 </div>
-                <h2
-                  style={{
-                    fontSize: 28,
-                    fontWeight: 700,
-                    color: "#fff",
-                    marginBottom: 12,
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {isRTL ? "دائماً بالقرب منك!" : "Always Near You!"}
-                </h2>
-                <p
-                  style={{
-                    fontSize: 15,
-                    color: "rgba(255,255,255,0.75)",
-                    lineHeight: 1.8,
-                    maxWidth: 340,
-                  }}
-                >
-                  {isRTL
-                    ? "نستقبل رسائلكم وملاحظاتكم بصدر رحب لتطوير خدماتنا للوصول لتجربة مستخدم أفضل"
-                    : "We welcome your messages and feedback to improve our services and reach a better user experience"}
-                </p>
-                
-                {/* Contact Direct Info */}
-                <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 16, width: "100%", maxWidth: 280, textAlign: isRTL ? "right" : "left" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.1)", padding: "12px 16px", borderRadius: 12 }}>
-                    <span style={{ color: "#fff", display: "flex" }}><PhoneIcon /></span>
-                    <span style={{ color: "#fff", fontSize: 14 }}>+20 123 456 7890</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.1)", padding: "12px 16px", borderRadius: 12 }}>
-                    <span style={{ color: "#fff", display: "flex" }}><MailIcon /></span>
-                    <span style={{ color: "#fff", fontSize: 14 }}>info@washalafas.com</span>
-                  </div>
-                </div>
-
-                <div className="auth-shimmer" style={{ position: "absolute", inset: 0, zIndex: -1 }} />
               </div>
+
+              {/* Message */}
+              <div className={`auth-input-group ${focusedField === "message" ? "focused" : ""}`}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8, textAlign: isRTL ? "right" : "left" }}>
+                  {isRTL ? "رسالتك" : "Message"} <span style={{color: "#DC2626"}}>*</span>
+                </label>
+                <div className="auth-input-border multi-line">
+                  <span className="auth-input-icon" style={{ marginTop: 2 }}><MessageIcon /></span>
+                  <textarea 
+                    value={message} 
+                    onChange={(e) => setMessage(e.target.value)} 
+                    onFocus={() => setFocusedField("message")} 
+                    onBlur={() => setFocusedField(null)} 
+                    placeholder={isRTL ? "كيف يمكننا مساعدتك؟" : "How can we help you?"} 
+                    className="input-field" 
+                    style={{ minHeight: 100, resize: "vertical" }}
+                  />
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button 
+                type="submit" 
+                className={`auth-submit-btn ${status === "loading" ? "loading" : "idle"}`}
+                disabled={status === "loading"}
+              >
+                {status === "loading" && (
+                  <span style={{ width: 20, height: 20, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                )}
+                {status === "loading" ? (isRTL ? "جاري الإرسال..." : "Sending...") : (isRTL ? "إرسال الرسالة" : "Send Message")}
+              </button>
+            </form>
+            </>
+          )}
+          </div>
+
+          {/* === Image Side === */}
+          <div className="contact-image-side auth-fade-in">
+            <img
+              src={authBg}
+              alt=""
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(14,53,20,0.85) 0%, rgba(46,125,50,0.7) 50%, rgba(20,83,45,0.85) 100%)" }} />
+            
+            <div
+              style={{
+                position: "absolute",
+                top: 0, bottom: 0, width: 120,
+                ...(isRTL
+                  ? { left: -1, background: "linear-gradient(to right, #fff 0%, #fff 50%, transparent 100%)", clipPath: "polygon(0 0, 100% 8%, 60% 100%, 0% 100%)" }
+                  : { right: -1, background: "linear-gradient(to left, #fff 0%, #fff 50%, transparent 100%)", clipPath: "polygon(40% 0, 100% 0, 100% 100%, 0% 92%)" }),
+              }}
+            />
+            
+            <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "48px 40px", textAlign: "center", width: "100%" }}>
+              <div className="auth-float" style={{ width: 100, height: 100, borderRadius: 24, background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 28, boxShadow: "0 10px 40px rgba(0,0,0,0.2)" }}>
+                <img src={logo} alt="WashAlafas" style={{ width: 70, height: 70, objectFit: "contain" }} />
+              </div>
+              <h2 style={{ fontSize: 28, fontWeight: 700, color: "#fff", marginBottom: 12, lineHeight: 1.3 }}>
+                {isRTL ? "دائماً بالقرب منك!" : "Always Near You!"}
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.75)", lineHeight: 1.8, maxWidth: 340 }}>
+                {isRTL
+                  ? "نستقبل رسائلكم وملاحظاتكم بصدر رحب لتطوير خدماتنا للوصول لتجربة مستخدم أفضل"
+                  : "We welcome your messages and feedback to improve our services and reach a better user experience"}
+              </p>
+              
+              <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 16, width: "100%", maxWidth: 280, textAlign: isRTL ? "right" : "left" }}>
+                <a href="tel:+201115313444" style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.1)", padding: "12px 16px", borderRadius: 12, textDecoration: "none", transition: "background 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background="rgba(255,255,255,0.2)"} onMouseLeave={(e) => e.currentTarget.style.background="rgba(255,255,255,0.1)"}>
+                  <span style={{ color: "#fff", display: "flex" }}><PhoneIcon /></span>
+                  <span style={{ color: "#fff", fontSize: 14 }} dir="ltr">+201115313444</span>
+                </a>
+                <a href="mailto:info@washalafas.com" style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.1)", padding: "12px 16px", borderRadius: 12, textDecoration: "none", transition: "background 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background="rgba(255,255,255,0.2)"} onMouseLeave={(e) => e.currentTarget.style.background="rgba(255,255,255,0.1)"}>
+                  <span style={{ color: "#fff", display: "flex" }}><MailIcon /></span>
+                  <span style={{ color: "#fff", fontSize: 14 }}>info@washalafas.com</span>
+                </a>
+              </div>
+
+              <div className="auth-shimmer" style={{ position: "absolute", inset: 0, zIndex: -1 }} />
             </div>
           </div>
         </div>

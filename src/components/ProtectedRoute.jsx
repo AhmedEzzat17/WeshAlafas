@@ -22,6 +22,9 @@ export default function ProtectedRoute() {
   }
 
   if (!isAuthenticated) {
+    if (location.pathname === "/checkout") {
+      return <Navigate to="/cart?login_required=true" replace />;
+    }
     // Redirect to login but save the current location they were trying to go to
     return <Navigate to={`/login?redirect=${location.pathname}`} replace />;
   }

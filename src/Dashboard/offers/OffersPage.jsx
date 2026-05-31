@@ -17,6 +17,22 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+function parseBilingual(text, locale) {
+  if (!text) return "";
+  const arMatch = text.match(/\[ar:(.*?)\]/);
+  const enMatch = text.match(/\[en:(.*?)\]/);
+  
+  if (!arMatch && !enMatch) {
+    return text.trim();
+  }
+  
+  if (locale === "en") {
+    return enMatch ? enMatch[1].trim() : (arMatch ? arMatch[1].trim() : text.trim());
+  }
+  // Default to Arabic
+  return arMatch ? arMatch[1].trim() : text.trim();
+}
+
 export default function OffersPage() {
   const { locale, direction } = useLanguage();
   const isRTL = direction === "rtl";
@@ -57,10 +73,16 @@ export default function OffersPage() {
     }
   };
 
-  const filteredOffers = offers.filter(o => 
-    o.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (o.description && o.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredOffers = offers.filter(o => {
+    let cleanDesc = o.description || "";
+    if (cleanDesc.includes("#wide")) {
+      cleanDesc = cleanDesc.replace("#wide", "").trim();
+    }
+    const nameParsed = parseBilingual(o.name, locale).toLowerCase();
+    const descParsed = parseBilingual(cleanDesc, locale).toLowerCase();
+    const query = searchQuery.toLowerCase();
+    return nameParsed.includes(query) || descParsed.includes(query);
+  });
 
   const getStatus = (offer) => {
     const now = new Date();
@@ -119,11 +141,19 @@ export default function OffersPage() {
           {filteredOffers.map(offer => {
             const status = getStatus(offer);
             const StatusIcon = status.icon;
+            
+            let cleanDesc = offer.description || "";
+            if (cleanDesc.includes("#wide")) {
+              cleanDesc = cleanDesc.replace("#wide", "").trim();
+            }
+            const displayName = parseBilingual(offer.name, locale);
+            const displayDesc = parseBilingual(cleanDesc, locale);
+
             return (
               <div key={offer.id} className="dashboard-panel" style={{ padding: 0, overflow: "hidden" }}>
                 <div style={{ position: "relative", height: 140, background: "#F8FAFC" }}>
-                  {offer.image_url ? (
-                    <img src={offer.image_url} alt={offer.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {(offer.image_url || offer.image) ? (
+                    <img src={offer.image_url || offer.image} alt={displayName} onError={(e) => { e.target.onerror = null; e.target.src = "/fallback.png"; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', display: "flex", alignItems: "center", justifyContent: "center", color: "#CBD5E1" }}>
                       <Tag size={48} />
@@ -157,8 +187,8 @@ export default function OffersPage() {
                 </div>
 
                 <div style={{ padding: 16 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>{offer.name}</h3>
-                  <p style={{ fontSize: 13, color: "#64748B", marginBottom: 12, height: 36, overflow: "hidden" }}>{offer.description}</p>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>{displayName}</h3>
+                  <p style={{ fontSize: 13, color: "#64748B", marginBottom: 12, height: 36, overflow: "hidden" }}>{displayDesc}</p>
                   
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
                     <div style={{ padding: "6px 12px", background: "#F0FDF4", borderRadius: 8, color: "#166534", fontWeight: 800, fontSize: 14 }}>

@@ -132,76 +132,146 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Grid View */}
+      {/* Data Table View */}
       {loading ? (
         <div style={{ padding: 80, textAlign: "center" }}>
           <div className="animate-spin" style={{ width: 40, height: 40, border: "3px solid #E2E8F0", borderTopColor: "#2E7D32", borderRadius: "50%", margin: "0 auto 16px" }} />
           <p style={{ color: "#94A3B8" }}>{locale === "ar" ? "جاري تحميل المستخدمين..." : "Loading users..."}</p>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
-          {filteredUsers.map(user => (
-            <div key={user.id} className="dashboard-panel" style={{ padding: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: "#F8FAFC", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#2E7D32" }}>
-                  {user.name?.charAt(0).toUpperCase()}
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <span style={{ 
-                    padding: "4px 10px", 
-                    borderRadius: 8, 
-                    fontSize: 11, 
-                    fontWeight: 700, 
-                    background: getRoleBadge(user.role).bg, 
-                    color: getRoleBadge(user.role).color 
-                  }}>
-                    {locale === "ar" ? getRoleBadge(user.role).labelAr : getRoleBadge(user.role).labelEn}
-                  </span>
-                  <button style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer" }}>
-                    <MoreVertical size={18} />
-                  </button>
-                </div>
-              </div>
+        <div className="dashboard-panel" style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: isRTL ? "right" : "left" }}>
+              <thead style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+                <tr>
+                  <th style={{ padding: "16px 20px", color: "#64748B", fontSize: 13, fontWeight: 700 }}>
+                    {locale === "ar" ? "المستخدم" : "User"}
+                  </th>
+                  <th style={{ padding: "16px 20px", color: "#64748B", fontSize: 13, fontWeight: 700 }}>
+                    {locale === "ar" ? "البريد الإلكتروني" : "Email"}
+                  </th>
+                  <th style={{ padding: "16px 20px", color: "#64748B", fontSize: 13, fontWeight: 700 }}>
+                    {locale === "ar" ? "الدور" : "Role"}
+                  </th>
+                  <th style={{ padding: "16px 20px", color: "#64748B", fontSize: 13, fontWeight: 700 }}>
+                    {locale === "ar" ? "الحالة" : "Status"}
+                  </th>
+                  <th style={{ padding: "16px 20px", color: "#64748B", fontSize: 13, fontWeight: 700, textAlign: "center" }}>
+                    {locale === "ar" ? "إجراءات" : "Actions"}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ padding: 40, textAlign: "center", color: "#94A3B8" }}>
+                      {locale === "ar" ? "لا يوجد مستخدمين" : "No users found"}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((user, index) => (
+                    <tr 
+                      key={user.id} 
+                      style={{ 
+                        borderBottom: index !== filteredUsers.length - 1 ? "1px solid #F1F5F9" : "none",
+                        transition: "background 0.2s"
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "#F8FAFC"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                    >
+                      {/* User Info */}
+                      <td style={{ padding: "16px 20px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ 
+                            width: 40, height: 40, borderRadius: 10, 
+                            background: "linear-gradient(135deg, rgba(46,125,50,0.1), rgba(46,125,50,0.05))",
+                            color: "#2E7D32", display: "flex", alignItems: "center", justifyContent: "center", 
+                            fontSize: 15, fontWeight: 700 
+                          }}>
+                            {user.name?.charAt(0).toUpperCase()}
+                          </div>
+                          <span style={{ fontWeight: 600, color: "#1E293B", fontSize: 14 }}>
+                            {user.name}
+                          </span>
+                        </div>
+                      </td>
+                      
+                      {/* Email */}
+                      <td style={{ padding: "16px 20px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#64748B", fontSize: 13 }}>
+                          <Mail size={14} />
+                          {user.email}
+                        </div>
+                      </td>
 
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>{user.name}</h3>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#64748B", fontSize: 13, marginBottom: 12 }}>
-                <Mail size={14} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</span>
-              </div>
+                      {/* Role */}
+                      <td style={{ padding: "16px 20px" }}>
+                        <span style={{ 
+                          padding: "4px 10px", 
+                          borderRadius: 8, 
+                          fontSize: 11, 
+                          fontWeight: 700, 
+                          background: getRoleBadge(user.role).bg, 
+                          color: getRoleBadge(user.role).color,
+                          display: "inline-block"
+                        }}>
+                          {locale === "ar" ? getRoleBadge(user.role).labelAr : getRoleBadge(user.role).labelEn}
+                        </span>
+                      </td>
 
-              <div style={{ display: "flex", gap: 12, borderTop: "1px solid #F1F5F9", paddingTop: 16, marginTop: 12 }}>
-                <button 
-                  onClick={() => handleToggleStatus(user.id)}
-                  style={{ 
-                    flex: 1, 
-                    padding: "8px", 
-                    borderRadius: 8, 
-                    border: "none", 
-                    background: user.status === "active" ? "#FEF2F2" : "#F0FDF4", 
-                    color: user.status === "active" ? "#EF4444" : "#2E7D32", 
-                    fontSize: 12, 
-                    fontWeight: 700, 
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6
-                  }}
-                >
-                  {user.status === "active" ? <UserX size={14} /> : <UserCheck size={14} />}
-                  {user.status === "active" ? (locale === "ar" ? "تعطيل" : "Disable") : (locale === "ar" ? "تفعيل" : "Enable")}
-                </button>
-                <button 
-                  onClick={() => navigate(`/dashboard/users/edit/${user.id}`)}
-                  className="dashboard-btn dashboard-btn--outline"
-                  style={{ flex: 1, padding: "8px", fontSize: 12 }}
-                >
-                  <Shield size={14} style={{ marginRight: isRTL ? 0 : 6, marginLeft: isRTL ? 6 : 0 }} />
-                  {locale === "ar" ? "تعديل البيانات" : "Edit User"}
-                </button>
-              </div>
-            </div>
-          ))}
+                      {/* Status */}
+                      <td style={{ padding: "16px 20px" }}>
+                        <span style={{ 
+                          display: "inline-flex", alignItems: "center", gap: 4,
+                          fontSize: 12, fontWeight: 600,
+                          color: user.status === "active" ? "#15803D" : "#B91C1C" 
+                        }}>
+                          <span style={{ 
+                            width: 6, height: 6, borderRadius: "50%", 
+                            background: user.status === "active" ? "#22C55E" : "#EF4444" 
+                          }} />
+                          {user.status === "active" ? (locale === "ar" ? "نشط" : "Active") : (locale === "ar" ? "معطل" : "Disabled")}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: "16px 20px", textAlign: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                          <button 
+                            onClick={() => handleToggleStatus(user.id)}
+                            title={user.status === "active" ? (locale === "ar" ? "تعطيل" : "Disable") : (locale === "ar" ? "تفعيل" : "Enable")}
+                            style={{ 
+                              width: 32, height: 32, borderRadius: 8, border: "none", cursor: "pointer",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              background: user.status === "active" ? "#FEF2F2" : "#F0FDF4", 
+                              color: user.status === "active" ? "#EF4444" : "#2E7D32", 
+                              transition: "all 0.2s"
+                            }}
+                          >
+                            {user.status === "active" ? <UserX size={14} /> : <UserCheck size={14} />}
+                          </button>
+                          
+                          <button 
+                            onClick={() => navigate(`/dashboard/users/edit/${user.id}`)}
+                            title={locale === "ar" ? "تعديل" : "Edit"}
+                            style={{ 
+                              width: 32, height: 32, borderRadius: 8, border: "1px solid #E2E8F0", cursor: "pointer",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              background: "#fff", color: "#64748B", transition: "all 0.2s"
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = "#2E7D32"; e.currentTarget.style.borderColor = "#2E7D32"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = "#64748B"; e.currentTarget.style.borderColor = "#E2E8F0"; }}
+                          >
+                            <Shield size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

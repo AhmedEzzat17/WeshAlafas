@@ -26,12 +26,12 @@ export default function ProductForm() {
         qualityGrade: existing.qualityGrade || "A",
       };
     }
-    return { 
-      nameEn: "", 
-      descEn: "", 
-      descAr: "", 
-      price: "", 
-      stock: "", 
+    return {
+      nameEn: "",
+      descEn: "",
+      descAr: "",
+      price: "",
+      stock: "",
       cropId: crops.length > 0 ? crops[0].id : "",
       qualityGrade: "A"
     };
@@ -48,7 +48,7 @@ export default function ProductForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    
+
     if (!form.cropId) {
       setError(locale === "ar" ? "يرجى اختيار صنف" : "Please select a crop");
       return;
@@ -105,9 +105,9 @@ export default function ProductForm() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
               <div>
                 <label className="dashboard-label">{locale === "ar" ? "اختر المحصول" : "Select Crop"} *</label>
-                <select 
-                  className="dashboard-select" 
-                  value={form.cropId} 
+                <select
+                  className="dashboard-select"
+                  value={form.cropId}
                   onChange={(e) => setForm(p => ({ ...p, cropId: e.target.value }))}
                   required
                 >
@@ -119,9 +119,9 @@ export default function ProductForm() {
               </div>
               <div>
                 <label className="dashboard-label">{locale === "ar" ? "جودة المنتج" : "Quality Grade"} *</label>
-                <select 
-                  className="dashboard-select" 
-                  value={form.qualityGrade} 
+                <select
+                  className="dashboard-select"
+                  value={form.qualityGrade}
                   onChange={(e) => setForm(p => ({ ...p, qualityGrade: e.target.value }))}
                   required
                 >

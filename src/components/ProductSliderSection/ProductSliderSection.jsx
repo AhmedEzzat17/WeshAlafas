@@ -9,6 +9,7 @@ export default function ProductSliderSection({
   sliderId = "product-slider-section",
   products,
   icon,
+  isOffer = false,
 }) {
   const { locale, direction } = useLanguage();
   const isRTL = direction === "rtl";
@@ -46,11 +47,11 @@ export default function ProductSliderSection({
         {/* Header */}
         <div
           className="flex items-center justify-between px-4 sm:px-8 md:px-12 lg:px-16"
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 16, gap: 12 }}
         >
           <h2
             className="flex items-center gap-2 font-extrabold text-gray-800"
-            style={{ fontSize: "clamp(17px, 3.5vw, 24px)" }}
+            style={{ fontSize: "clamp(16px, 3.5vw, 24px)", lineHeight: 1.3, flex: 1 }}
           >
             {icon || defaultIcon}
             {locale === "ar" ? titleAr : titleEn}
@@ -58,7 +59,7 @@ export default function ProductSliderSection({
           <div className="flex items-center" style={{ gap: 10 }}>
             <Link
               to="/products"
-              className="font-semibold transition-all duration-300 flex items-center group"
+              className="font-semibold transition-all duration-300 flex items-center shrink-0 group whitespace-nowrap"
               style={{
                 gap: 6,
                 fontSize: 13,
@@ -120,7 +121,7 @@ export default function ProductSliderSection({
               className="shrink-0 transition-transform duration-300"
               style={{ width: "clamp(240px, 75vw, 320px)" }}
             >
-              <ProductCard product={product} />
+              <ProductCard product={product} isOffer={isOffer} />
             </div>
           ))}
         </div>
@@ -139,8 +140,9 @@ export default function ProductSliderSection({
               boxShadow: "0 4px 12px rgba(46,125,50,0.15)",
             }}
             onClick={() => {
+              const scrollAmount = isRTL ? 250 : -250;
               document.getElementById(sliderId)?.scrollBy({
-                left: isRTL ? 250 : -250,
+                left: scrollAmount,
                 behavior: "smooth",
               });
             }}
@@ -171,8 +173,9 @@ export default function ProductSliderSection({
               boxShadow: "0 4px 12px rgba(46,125,50,0.15)",
             }}
             onClick={() => {
+              const scrollAmount = isRTL ? -250 : 250;
               document.getElementById(sliderId)?.scrollBy({
-                left: isRTL ? -250 : 250,
+                left: scrollAmount,
                 behavior: "smooth",
               });
             }}

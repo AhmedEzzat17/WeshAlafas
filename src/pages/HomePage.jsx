@@ -1,347 +1,397 @@
-import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useMemo } from "react";
+import { useLocation, Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import Hero from "../components/Hero/Hero";
 import About from "../components/About/About";
-import ProductCard from "../components/ProductCard";
 import FAQ from "../components/FAQ/FAQ";
 import OffersSlider from "../components/OffersSlider/OffersSlider";
 import CategoriesSection from "../components/CategoriesSection/CategoriesSection";
 import ProductSliderSection from "../components/ProductSliderSection/ProductSliderSection";
+import PromoBannersSection from "../components/PromoBannersSection/PromoBannersSection";
 import { useDashboardData } from "../Dashboard/shared/DashboardDataContext";
-import { ProductSkeleton } from "../components/Skeleton";
+import { ProductSkeleton, HeroSkeleton, SectionTitleSkeleton, AboutSkeleton } from "../components/Skeleton";
+
+/* ── collect products that belong to an offer's listings ── */
+function getOfferProducts(offer, allProducts) {
+  if (!offer || !offer.listings || offer.listings.length === 0) return [];
+  const ids = offer.listings.map(l => String(l.id || l));
+  return allProducts.filter(p => ids.includes(String(p.id)));
+}
+
+const ProjectIdeaSection = () => {
+  const { direction } = useLanguage();
+  const isRTL = direction === "rtl";
+
+  return (
+    <section style={{
+      padding: "60px 20px",
+      background: "#F1F8E9",
+      marginTop: "40px",
+      marginBottom: "40px",
+      borderRadius: "24px",
+      margin: "40px 16px"
+    }}>
+      <div style={{
+        maxWidth: "1200px",
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: isRTL ? "row-reverse" : "row",
+        alignItems: "center",
+        gap: "40px",
+        flexWrap: "wrap"
+      }}>
+        <div style={{ flex: "1 1 500px", textAlign: isRTL ? "right" : "left" }}>
+          <span style={{
+            display: "inline-block",
+            fontSize: "13px",
+            fontWeight: "800",
+            color: "#2E7D32",
+            letterSpacing: "1px",
+            marginBottom: "12px",
+            textTransform: "uppercase"
+          }}>
+            {isRTL ? "قطاع الأعمال والشركات" : "B2B & Corporate"}
+          </span>
+          <h2 style={{
+            fontSize: "clamp(24px, 3.5vw, 36px)",
+            fontWeight: "900",
+            color: "#1B5E20",
+            marginBottom: "20px",
+            lineHeight: 1.3
+          }}>
+            {isRTL ? "شريكك الموثوق لتوريد المحاصيل الطازجة" : "Your Trusted Fresh Produce Partner"}
+          </h2>
+          <p style={{
+            fontSize: "clamp(15px, 1.5vw, 17px)",
+            color: "#4B5563", 
+            lineHeight: "1.8",
+            marginBottom: "16px"
+          }}>
+            {isRTL 
+              ? "نحن نضع بين يديك منظومة متكاملة لخدمة قطاع الأعمال (B2B)، حيث نعمل كجسر مباشر يربط بين المزارع المنتجة وبين التجار والفنادق والمنشآت التجارية."
+              : "We provide an integrated B2B ecosystem, acting as a direct bridge connecting producing farms with hotels, restaurants, cafes, and commercial establishments."}
+          </p>
+          <p style={{
+            fontSize: "clamp(15px, 1.5vw, 17px)",
+            color: "#4B5563",
+            lineHeight: "1.8",
+            marginBottom: "24px"
+          }}>
+            {isRTL
+              ? "من خلال القضاء على سلسلة الوسطاء المعقدة، نضمن لك استمرارية التوريد بالكميات المطلوبة، مع تقديم أسعار جملة حقيقية تساهم في زيادة أرباح منشأتك."
+              : "By eliminating complex middlemen chains, we guarantee continuous supply in required volumes, offering real wholesale prices that boost your profitability."}
+          </p>
+          <ul style={{
+            listStyleType: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: "16px"
+          }}>
+            {[
+              isRTL ? "عقود توريد مرنة ومستمرة" : "Flexible & Continuous Contracts",
+              isRTL ? "أسعار جملة تنافسية" : "Competitive Wholesale Prices",
+              isRTL ? "فرز وتعبئة بمعايير فندقية" : "Premium Sorting & Packaging",
+              isRTL ? "تلبية سريعة للكميات الكبيرة" : "Fast Fulfillment for Bulk Orders"
+            ].map((item, index) => (
+              <li key={index} style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                fontSize: "15px",
+                fontWeight: "700",
+                color: "#2E7D32"
+              }}>
+                <span style={{
+                  display: "inline-flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  width: "24px",
+                  height: "24px",
+                  borderRadius: "50%",
+                  backgroundColor: "#2E7D32",
+                  color: "#fff",
+                  fontSize: "14px"
+                }}>
+                  <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                </span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div style={{ flex: "1 1 400px", display: "flex", justifyContent: "center" }}>
+          <div style={{
+            width: "100%",
+            maxWidth: "450px",
+            aspectRatio: "1",
+            borderRadius: "24px",
+            background: "linear-gradient(135deg, #1B5E20, #388E3C)",
+            boxShadow: "0 20px 40px rgba(46,125,50,0.25)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "40px",
+            textAlign: "center",
+            color: "white"
+          }}>
+            <svg style={{ width: "90px", height: "90px", marginBottom: "24px", opacity: 0.9 }} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <h3 style={{ fontSize: "24px", fontWeight: "900", margin: 0, lineHeight: 1.4 }}>
+              {isRTL ? "من المزرعة إلى منشأتك مباشرة" : "Directly From Farm to Your Establishment"}
+            </h3>
+            <p style={{ marginTop: "12px", fontSize: "15px", color: "rgba(255,255,255,0.8)" }}>
+              {isRTL ? "بدون وسطاء، جودة أعلى وتوفير أكثر" : "No middlemen, higher quality, more savings"}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const CTASection = () => {
+  const { direction } = useLanguage();
+  const isRTL = direction === "rtl";
+
+  return (
+    <section style={{ padding: "20px 10px", background: "#f8faf8" }}>
+      <div style={{
+        maxWidth: "1320px",
+        margin: "0 auto",
+        background: "linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%)",
+        borderRadius: "24px",
+        padding: "clamp(20px, 6vw, 80px) 20px",
+        textAlign: "center",
+        boxShadow: "0 20px 40px rgba(27,94,32,0.15)",
+        position: "relative",
+        overflow: "hidden"
+      }}>
+        {/* Abstract Background Shapes */}
+        <div style={{ position: "absolute", top: "-50px", right: "-50px", width: "250px", height: "250px", borderRadius: "50%", background: "rgba(255,255,255,0.04)" }} />
+        <div style={{ position: "absolute", bottom: "-80px", left: "-80px", width: "350px", height: "350px", borderRadius: "50%", background: "rgba(255,255,255,0.04)" }} />
+
+        <div style={{ position: "relative", zIndex: 10, maxWidth: "700px", margin: "0 auto" }}>
+          <h2 style={{
+            color: "#ffffff",
+            fontSize: "clamp(28px, 4vw, 44px)",
+            fontWeight: "900",
+            marginBottom: "20px",
+            lineHeight: 1.3
+          }}>
+            {isRTL ? "ابدأ الآن مع وش الأفص" : "Start Now with Wesh Alafas"}
+          </h2>
+          <p style={{
+            color: "rgba(255,255,255,0.85)",
+            fontSize: "clamp(16px, 1.8vw, 18px)",
+            marginBottom: "40px",
+            lineHeight: 1.7,
+            fontWeight: 500
+          }}>
+            {isRTL 
+              ? "اكتشف أفضل المحاصيل الزراعية الطازجة، واحصل على عروض حصرية تلبي احتياجاتك بأسعار لا تقبل المنافسة." 
+              : "Discover the best fresh agricultural crops, and get exclusive offers tailored to your needs at unbeatable prices."}
+          </p>
+          
+          <div style={{
+            display: "flex",
+            gap: "16px",
+            justifyContent: "center",
+            flexWrap: "wrap"
+          }}>
+            <Link to="/products" className="cta-btn-primary" style={{
+              background: "#F97316",
+              color: "#ffffff",
+              padding: "16px 40px",
+              borderRadius: "50px",
+              fontWeight: "800",
+              fontSize: "16px",
+              textDecoration: "none",
+              boxShadow: "0 8px 20px rgba(249,115,22,0.3)",
+              transition: "transform 0.3s ease, background 0.3s ease",
+              display: "inline-flex",
+              alignItems: "center"
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = '#ea580c'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = '#F97316'; }}
+            >
+              {isRTL ? "تصفح المنتجات" : "Browse Products"}
+            </Link>
+            <Link to="/contact" className="cta-btn-secondary" style={{
+              background: "rgba(255,255,255,0.1)",
+              color: "#ffffff",
+              padding: "16px 40px",
+              borderRadius: "50px",
+              fontWeight: "800",
+              fontSize: "16px",
+              textDecoration: "none",
+              border: "2px solid rgba(255,255,255,0.2)",
+              transition: "transform 0.3s ease, background 0.3s ease",
+              backdropFilter: "blur(10px)",
+              display: "inline-flex",
+              alignItems: "center"
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+            >
+              {isRTL ? "تواصل معنا" : "Contact Us"}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
 
 export default function HomePage() {
-  const { locale, direction } = useLanguage();
-  const { products: mockProducts, loading } = useDashboardData();
+  const { direction } = useLanguage();
+  const { products, offers: rawOffers, loading } = useDashboardData();
   const isRTL = direction === "rtl";
   const location = useLocation();
 
+  /* scroll to hash section */
   useEffect(() => {
-    if (location.hash) {
-      const id = location.hash.substring(1);
-      const element = document.getElementById(id);
-      if (element) {
-        setTimeout(() => {
-          const headerOffset = 80;
-          const elementPosition = element.getBoundingClientRect().top;
-          const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-          window.scrollTo({
-            top: offsetPosition,
-            behavior: "smooth",
-          });
-        }, 100);
-      }
+    if (!location.hash) return;
+    const id = location.hash.substring(1);
+    const element = document.getElementById(id);
+    if (element) {
+      setTimeout(() => {
+        const headerOffset = 80;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+      }, 100);
     }
   }, [location]);
 
-  useEffect(() => {
-    if (loading) return;
-    const slider = document.getElementById("product-slider");
-    if (!slider) return;
 
-    let isPaused = false;
-    const scrollStep = isRTL ? -300 : 300;
-    
-    const interval = setInterval(() => {
-      if (isPaused) return;
-      const maxScroll = slider.scrollWidth - slider.clientWidth;
-      
-      if (Math.abs(slider.scrollLeft) >= maxScroll - 5) {
-        slider.scrollTo({ left: 0, behavior: "smooth" });
-      } else {
-        slider.scrollBy({ left: scrollStep, behavior: "smooth" });
-      }
-    }, 3000);
 
-    const handleEnter = () => { isPaused = true; };
-    const handleLeave = () => { isPaused = false; };
-    
-    slider.addEventListener("mouseenter", handleEnter);
-    slider.addEventListener("mouseleave", handleLeave);
-    slider.addEventListener("touchstart", handleEnter);
-    slider.addEventListener("touchend", handleLeave);
+  /* Filter out wide offers (those with #wide tag) */
+  const wideOffers = useMemo(() => {
+    return rawOffers?.filter(o => (o.description || "").includes("#wide")) || [];
+  }, [rawOffers]);
 
-    return () => {
-      clearInterval(interval);
-      slider.removeEventListener("mouseenter", handleEnter);
-      slider.removeEventListener("mouseleave", handleLeave);
-      slider.removeEventListener("touchstart", handleEnter);
-      slider.removeEventListener("touchend", handleLeave);
-    };
-  }, [isRTL, loading]);
-
-  const renderSkeletons = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 px-4 sm:px-8 md:px-12 lg:px-16">
-      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <ProductSkeleton key={i} />)}
-    </div>
-  );
+  /* collect real products for each banner group using wideOffers */
+  const groupProducts = useMemo(() => {
+    // 0: first wide banner, 1: second wide banner, 2: normal slider fallback
+    return [0, 1].map(idx => {
+      const offer = wideOffers[idx];
+      if (!offer) return [];
+      const collected = new Map();
+      getOfferProducts(offer, products).forEach(p => {
+        if (!collected.has(p.id)) collected.set(p.id, p);
+      });
+      return [...collected.values()].slice(0, 7);
+    });
+  }, [wideOffers, products]);
 
   return (
-    <div dir={isRTL ? "rtl" : "ltr"}>
-      {/* ===== Hero ===== */}
-      <Hero />
-
+    <div dir={isRTL ? "rtl" : "ltr"} className="home-page overflow-hidden">
       {loading ? (
-        <div style={{ background: "#f8faf8", padding: "64px 0" }}>
-           <div className="max-w-[1920px] mx-auto">
-             <div className="px-4 sm:px-8 md:px-12 lg:px-16 mb-8">
-               <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
-               <div className="h-4 w-64 bg-gray-100 rounded animate-pulse"></div>
-             </div>
-             {renderSkeletons()}
-           </div>
+        <div style={{ background: "#f8faf8", paddingBottom: "64px" }}>
+          {/* Hero Skeleton */}
+          <HeroSkeleton />
+          
+          {/* About Skeleton */}
+          <div style={{ background: "#fff" }}>
+            <AboutSkeleton />
+          </div>
+
+          <div style={{ marginTop: "40px" }}>
+            <SectionTitleSkeleton />
+            <div className="max-w-[1920px] mx-auto px-4 sm:px-8 md:px-12 lg:px-16">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-4">
+                {[1, 2, 3, 4, 5, 6].map(i => <ProductSkeleton key={i} />)}
+              </div>
+            </div>
+          </div>
+          <div style={{ marginTop: "64px" }}>
+            <SectionTitleSkeleton />
+            <div className="max-w-[1920px] mx-auto px-4 sm:px-8 md:px-12 lg:px-16">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-4">
+                {[1, 2, 3, 4, 5, 6].map(i => <ProductSkeleton key={i} />)}
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <>
-          {/* ===== About ===== */}
-          <div id="about">
-            <About />
-          </div>
+          {/* ═══════ Hero Section ═══════ */}
+          <Hero />
 
-          {/* ===== Stats ===== */}
-      <section
-        className="bg-white"
-        style={{ borderTop: "1px solid #eee", borderBottom: "1px solid #eee" }}
-      >
-        <div
-          className="max-w-[1920px] w-full mx-auto grid grid-cols-2 md:grid-cols-4 text-center px-4 sm:px-8 md:px-12 lg:px-16"
-          style={{ padding: "32px 0", gap: 12 }}
-        >
-          {[
-            { num: "10K+", label: locale === "ar" ? "منتج" : "Products" },
-            {
-              num: "50K+",
-              label: locale === "ar" ? "عميل سعيد" : "Happy Customers",
-            },
-            {
-              num: "99%",
-              label: locale === "ar" ? "رضا العملاء" : "Satisfaction",
-            },
-            { num: "24/7", label: locale === "ar" ? "دعم فني" : "Support" },
-          ].map((stat, i) => (
-            <div key={i} style={{ padding: "6px 0" }}>
-              <div
-                className="font-extrabold text-primary"
-                style={{ fontSize: "clamp(22px, 4vw, 32px)" }}
-              >
-                {stat.num}
-              </div>
-              <div
-                className="text-gray-500 font-medium"
-                style={{ fontSize: 13, marginTop: 2 }}
-              >
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+          {/* ═══════ About ═══════ */}
+          <div id="about"><About /></div>
 
+          {/* ═══════ Categories ═══════ */}
+          <div id="categories"><CategoriesSection /></div>
 
-      {/* ===== Exclusive Offers - Horizontal Slider ===== */}
-      <section style={{ background: "#f8faf8", padding: "36px 30px 24px" }}>
-        <div className="max-w-[1920px] w-full mx-auto">
-          {/* Header */}
-          <div
-            className="flex items-center justify-between px-4 sm:px-8 md:px-12 lg:px-16"
-            style={{ marginBottom: 16 }}
-          >
-            <h2
-              className="flex items-center gap-2 font-extrabold text-gray-800"
-              style={{ fontSize: "clamp(17px, 3.5vw, 24px)" }}
-            >
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="url(#fireGradient)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <defs>
-                  <linearGradient id="fireGradient" x1="0" y1="1" x2="0" y2="0">
-                    <stop offset="0%" stopColor="#2E7D32" />
-                    <stop offset="50%" stopColor="#43A047" />
-                    <stop offset="100%" stopColor="#66BB6A" />
-                  </linearGradient>
-                </defs>
-                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-              </svg>
-              {locale === "ar" ? "عروض حصرية" : "Exclusive Offers"}
-            </h2>
-            <div className="flex items-center" style={{ gap: 10 }}>
-              <a
-                href="/products"
-                className="font-semibold transition-all duration-300 flex items-center group"
-                style={{
-                  gap: 6,
-                  fontSize: 13,
-                  background: "linear-gradient(135deg, #2E7D32, #43A047)",
-                  color: "#fff",
-                  padding: "7px 16px",
-                  borderRadius: 10,
-                  textDecoration: "none",
-                  boxShadow: "0 2px 8px rgba(46,125,50,0.25)",
-                }}
-              >
-                {locale === "ar" ? "عرض الكل" : "View All"}
-                <svg
-                  className={`transition-transform duration-300 ${isRTL ? "group-hover:-translate-x-1" : "group-hover:translate-x-1"}`}
-                  style={{
-                    width: 18,
-                    height: 18,
-                    transform: isRTL ? "scaleX(-1)" : "none",
-                    flexShrink: 0,
-                  }}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
-                  />
-                </svg>
-              </a>
-            </div>
-          </div>
+          {/* ═══════ Offers Slider (Green Banner with 2 cards) ═══════ */}
+          <OffersSlider />
 
-          {/* Slider - full width */}
-          <div
-            id="product-slider"
-            className="flex overflow-x-auto no-scrollbar scroll-smooth pb-4"
-            style={{ gap: 16 }}
-            onMouseDown={(e) => {
-              e.currentTarget.isDown = true;
-              e.currentTarget.startX = e.pageX - e.currentTarget.offsetLeft;
-              e.currentTarget.sLeft = e.currentTarget.scrollLeft;
-            }}
-            onMouseLeave={(e) => (e.currentTarget.isDown = false)}
-            onMouseUp={(e) => (e.currentTarget.isDown = false)}
-            onMouseMove={(e) => {
-              if (!e.currentTarget.isDown) return;
-              e.preventDefault();
-              const x = e.pageX - e.currentTarget.offsetLeft;
-              const walk = (x - e.currentTarget.startX) * 2;
-              e.currentTarget.scrollLeft = e.currentTarget.sLeft - walk;
-            }}
-          >
-            {mockProducts.slice(0, 6).map((product) => (
-              <div
-                key={`slider-${product.id}`}
-                className="shrink-0 transition-transform duration-300"
-                style={{ width: "clamp(240px, 75vw, 320px)" }}
-              >
-                <ProductCard product={product} />
-              </div>
-            ))}
-          </div>
+          {/* ══════════════════════════════════════════════════════
+              GROUP 1: Cards + PromoBanners (Offer 3)
+          ══════════════════════════════════════════════════════ */}
+          <ProductSliderSection
+            titleAr="منتجات عروضنا المميزة"
+            titleEn="Special Offer Products"
+            sliderId="offer-group-1-slider"
+            isOffer={true}
+            products={
+              groupProducts[0].length > 0
+                ? groupProducts[0]
+                : products.slice(0, 7)
+            }
+          />
 
-          {/* Arrows (Moved to Bottom) */}
-          <div className="flex items-center justify-center mt-6" style={{ gap: 12, marginTop: 20 }} dir="ltr">
-            <button
-              className="flex items-center justify-center transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95"
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: "10px",
-                border: "2px solid #2E7D32",
-                background: "white",
-                color: "#2E7D32",
-                boxShadow: "0 4px 12px rgba(46,125,50,0.15)",
-              }}
-              onClick={() => {
-                document.getElementById("product-slider").scrollBy({
-                  left: isRTL ? 250 : -250,
-                  behavior: "smooth",
-                });
-              }}
-            >
-              <svg
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                style={{
-                  width: "24px",
-                  height: "24px",
-                  transform: "scaleX(-1)",
-                }}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-              </svg>
-            </button>
-            <button
-              className="flex items-center justify-center transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95"
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: "10px",
-                border: "2px solid #2E7D32",
-                background: "white",
-                color: "#2E7D32",
-                boxShadow: "0 4px 12px rgba(46,125,50,0.15)",
-              }}
-              onClick={() => {
-                document.getElementById("product-slider").scrollBy({
-                  left: isRTL ? -250 : 250,
-                  behavior: "smooth",
-                });
-              }}
-            >
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ width: "24px", height: "24px" }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </section>
+          {wideOffers?.[0] && (
+            <PromoBannersSection offer={wideOffers[0]} groupIndex={0} />
+          )}
 
+          {/* ══════════════════════════════════════════════════════
+              GROUP 2: Cards + PromoBanners (Offer 4)
+          ══════════════════════════════════════════════════════ */}
+          <ProductSliderSection
+            titleAr="عروض توفير إضافية"
+            titleEn="Additional Savings"
+            sliderId="offer-group-2-slider"
+            isOffer={true}
+            products={
+              groupProducts[1].length > 0
+                ? groupProducts[1]
+                : (products.length > 7 ? products.slice(7, 14) : products.slice(0, 7))
+            }
+          />
 
-      {/* ===== Categories ===== */}
-      <CategoriesSection />
+          {wideOffers?.[1] && (
+            <PromoBannersSection offer={wideOffers[1]} groupIndex={1} />
+          )}
 
-      {/* ===== Offers Slider ===== */}
-      <OffersSlider />
+          {/* ══════════════════════════════════════════════════════
+              GROUP 3: Cards Only (Offer 0)
+          ══════════════════════════════════════════════════════ */}
+          <ProductSliderSection
+            titleAr="وصل حديثاً"
+            titleEn="New Arrivals"
+            sliderId="offer-group-3-slider"
+            isOffer={true}
+            products={
+              products.length > 14
+                ? products.slice(14, 21)
+                : (products.length > 7 ? products.slice(3, 10) : products.slice(0, 7))
+            }
+          />
 
-      {/* ===== Product Slider Sections ===== */}
-      {/* 
-      <ProductSliderSection
-        titleAr="الخضروات الطازجة"
-        titleEn="Fresh Vegetables"
-        sliderId="vegetables-slider"
-        products={mockProducts.filter(p => p.category === 'VEGETABLES' || p.categorySlug === 'vegetables').slice(0, 12)}
-      />
+          {/* ═══════ Project Idea Section ═══════ */}
+          <ProjectIdeaSection />
 
-      <ProductSliderSection
-        titleAr="الفواكه الموسمية"
-        titleEn="Seasonal Fruits"
-        sliderId="fruits-slider"
-        products={mockProducts.filter(p => p.category === 'FRUITS' || p.categorySlug === 'fruits').slice(0, 12)}
-      />
-      */}
+          {/* ═══════ FAQ ═══════ */}
+          <div id="faq"><FAQ /></div>
 
-      <ProductSliderSection
-        titleAr="أفضل العروض"
-        titleEn="Best Deals"
-        sliderId="deals-slider"
-        products={mockProducts.filter(p => p.oldPrice != null).slice(0, 12)}
-      />
-
-      {/* ===== All Products - Full Width Grid ===== */}
-      <section id="products" style={{ background: "#f8faf8", padding: "12px 0 48px" }}>
-        {/* The grid component originally placed here... I will leave this as it was. */}
-      </section>
-
-      {/* ===== FAQ Section ===== */}
-      <div id="faq">
-        <FAQ />
-      </div>
+          {/* ═══════ CTA Section ═══════ */}
+          <CTASection />
         </>
       )}
     </div>

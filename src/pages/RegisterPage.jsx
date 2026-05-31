@@ -736,7 +736,7 @@ export default function RegisterPage() {
                     <span>
                       {typeParam === "farmer" && (isRTL ? "🌾 مزارع" : "Farmer")}
                       {typeParam === "trader" && (isRTL ? "🛒 تاجر" : "Trader")}
-                      {typeParam === "company" && (isRTL ? "🏢 منشأة" : "Entity")}
+                      {typeParam === "company" && (isRTL ? "🏢 منشأة / فنادق" : "Entity")}
                     </span>
                     <Link to="/account-type" style={{ fontSize: 12, color: "#2E7D32", textDecoration: "underline" }}>
                       {isRTL ? "تغيير النوع" : "Change Type"}
@@ -820,12 +820,12 @@ export default function RegisterPage() {
                         onFocus={() => setFocusedField("password")}
                         onBlur={() => setFocusedField(null)}
                         placeholder={isRTL ? "كلمة المرور" : "Password"}
-                        style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#1a1a1a" }}
+                        style={{ flex: 1, width: 0, minWidth: 0, border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#1a1a1a" }}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "#9CA3AF", display: "flex", padding: 0, transition: "color 0.2s" }}
+                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "#9CA3AF", display: "flex", flexShrink: 0, padding: 0, transition: "color 0.2s" }}
                         onMouseEnter={(e) => (e.currentTarget.style.color = "#2E7D32")}
                         onMouseLeave={(e) => (e.currentTarget.style.color = "#9CA3AF")}
                       >
@@ -863,12 +863,12 @@ export default function RegisterPage() {
                         onFocus={() => setFocusedField("confirmPassword")}
                         onBlur={() => setFocusedField(null)}
                         placeholder={isRTL ? "تأكيد كلمة المرور" : "Confirm password"}
-                        style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#1a1a1a" }}
+                        style={{ flex: 1, width: 0, minWidth: 0, border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#1a1a1a" }}
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "#9CA3AF", display: "flex", padding: 0, transition: "color 0.2s" }}
+                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "#9CA3AF", display: "flex", flexShrink: 0, padding: 0, transition: "color 0.2s" }}
                         onMouseEnter={(e) => (e.currentTarget.style.color = "#2E7D32")}
                         onMouseLeave={(e) => (e.currentTarget.style.color = "#9CA3AF")}
                       >

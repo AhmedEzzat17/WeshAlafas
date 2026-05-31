@@ -27,11 +27,11 @@ export default function DashboardHeader({ onMobileMenuToggle, isMobileMenuOpen }
   const { user } = useAuth();
   const navigate = useNavigate();
   const isRTL = direction === "rtl";
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
-  
+
   const [searchResults, setSearchResults] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
 
@@ -66,7 +66,7 @@ export default function DashboardHeader({ onMobileMenuToggle, isMobileMenuOpen }
   const handleSearch = (query) => {
     setSearchQuery(query);
     if (query.trim().length > 0) {
-      const results = searchablePages.filter(page => 
+      const results = searchablePages.filter(page =>
         page.labelEn.toLowerCase().includes(query.toLowerCase()) ||
         page.labelAr.includes(query)
       );
@@ -134,9 +134,9 @@ export default function DashboardHeader({ onMobileMenuToggle, isMobileMenuOpen }
           {showSearch && searchResults.length > 0 && (
             <div className="search-dropdown" style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, right: 0, background: "#fff", borderRadius: 12, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", border: "1px solid #E2E8F0", zIndex: 100, overflow: "hidden" }}>
               {searchResults.map((res, i) => (
-                <div 
-                  key={i} 
-                  className="search-item" 
+                <div
+                  key={i}
+                  className="search-item"
                   onClick={() => { navigate(res.path); setSearchQuery(""); setShowSearch(false); }}
                   style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", borderBottom: i < searchResults.length - 1 ? "1px solid #F1F5F9" : "none" }}
                 >
@@ -198,7 +198,7 @@ export default function DashboardHeader({ onMobileMenuToggle, isMobileMenuOpen }
         </button>
 
         {/* Profile */}
-        <div 
+        <div
           onClick={() => navigate("/dashboard/settings")}
           style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 4px 4px 12px", borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0", cursor: "pointer", transition: "all 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.background = "#F1F5F9"}

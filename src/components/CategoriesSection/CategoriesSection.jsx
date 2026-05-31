@@ -2,10 +2,6 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useDashboardData } from "../../Dashboard/shared/DashboardDataContext";
-import vegetablesImg from "/images/about-bg.jpg";
-import fruitsImg from "../../assets/categories/fruits.png";
-import grainsImg from "../../assets/categories/grains.png";
-import offersImg from "../../assets/categories/offers.png";
 
 export default function CategoriesSection() {
   const { locale, direction } = useLanguage();
@@ -48,24 +44,22 @@ export default function CategoriesSection() {
   }, [isPaused]);
 
   const categories = useMemo(() => {
-    const fromApi = apiCategories.map(cat => ({
-      id: cat.slug || cat.id,
-      titleEn: cat.nameEn,
-      titleAr: cat.nameAr,
-      image: cat.image || vegetablesImg, // Fallback image
-    }));
+    return apiCategories.map(cat => {
+      const isOffers = 
+        cat.slug === "offers" || 
+        cat.nameAr === "العروض" || 
+        cat.nameAr === "العروض الحصرية" || 
+        cat.nameAr === "العروض الحصريه" || 
+        String(cat.id) === "offers";
 
-    // Add Special Offers if not present
-    if (!fromApi.find(c => c.id === 'offers')) {
-      fromApi.push({
-        id: "offers",
-        titleEn: "Offers",
-        titleAr: "العروض",
-        image: offersImg,
-      });
-    }
-    
-    return fromApi;
+      return {
+        id: isOffers ? "offers" : cat.id,          // Map to 'offers' to match the filter page!
+        slug: cat.slug,
+        titleEn: isOffers ? "Exclusive Offers" : (cat.nameEn || cat.name?.en || cat.name || "Category"),
+        titleAr: isOffers ? "العروض الحصرية" : (cat.nameAr || cat.name?.ar || cat.name || "قسم"),
+        image: cat.image || null,
+      };
+    });
   }, [apiCategories]);
 
   return (
@@ -122,7 +116,7 @@ export default function CategoriesSection() {
             </svg>
             {locale === "ar" ? "الأقسام" : "Categories"}
           </h2>
-          
+
           <div className="flex items-center" style={{ gap: 10 }}>
             <Link
               to="/categories"
@@ -133,7 +127,7 @@ export default function CategoriesSection() {
                 background: "linear-gradient(135deg, #2E7D32, #43A047)",
                 color: "#fff",
                 padding: "7px 16px",
-                margin:"12px",
+                margin: "12px",
                 borderRadius: 10,
                 textDecoration: "none",
                 boxShadow: "0 2px 8px rgba(46,125,50,0.25)",
@@ -156,7 +150,7 @@ export default function CategoriesSection() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
               </svg>
             </Link>
-            
+
             {/* أزرار السحب في الشاشات الكبيرة لتسهيل تصفح الأقسام عند إضافة المزيد */}
             {/* <div className="hidden sm:flex items-center" style={{ gap: 6 }}>
               <button
@@ -234,13 +228,22 @@ export default function CategoriesSection() {
             >
               <div
                 className="flex items-center justify-center rounded-xl shrink-0 overflow-hidden transition-transform duration-300 group-hover:scale-110"
-                style={{ width: 80, height: 80 }}
+                style={{ width: 80, height: 80, background: cat.image ? "transparent" : "linear-gradient(135deg, #e8f5e9, #c8e6c9)" }}
               >
-                <img
-                  src={cat.image}
-                  alt={locale === "ar" ? cat.titleAr : cat.titleEn}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }}
-                />
+                {cat.image ? (
+                  <img
+                    src={cat.image}
+                    alt={locale === "ar" ? cat.titleAr : cat.titleEn}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }}
+                  />
+                ) : (
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                  </svg>
+                )}
               </div>
               <h3 className="font-bold text-gray-800" style={{ fontSize: "clamp(15px, 2.5vw, 17px)", marginTop: 8 }}>
                 {locale === "ar" ? cat.titleAr : cat.titleEn}
@@ -249,53 +252,57 @@ export default function CategoriesSection() {
           ))}
         </div>
 
-        {/* Arrows (Mobile Only - Under 776px) */}
-        <div className="hidden max-[776px]:flex items-center justify-center mt-6" style={{ gap: 12 }} dir="ltr">
-          <button
-            className="flex items-center justify-center transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95"
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: "10px",
-              border: "2px solid #2E7D32",
-              background: "white",
-              color: "#2E7D32",
-              boxShadow: "0 4px 12px rgba(46,125,50,0.15)",
-            }}
-            onClick={() => {
-              document.getElementById("categories-grid")?.scrollBy({
-                left: isRTL ? 250 : -250,
-                behavior: "smooth",
-              });
-            }}
-          >
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ width: "24px", height: "24px", transform: "scaleX(-1)" }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-            </svg>
-          </button>
-          <button
-            className="flex items-center justify-center transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95"
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: "10px",
-              border: "2px solid #2E7D32",
-              background: "white",
-              color: "#2E7D32",
-              boxShadow: "0 4px 12px rgba(46,125,50,0.15)",
-            }}
-            onClick={() => {
-              document.getElementById("categories-grid")?.scrollBy({
-                left: isRTL ? -250 : 250,
-                behavior: "smooth",
-              });
-            }}
-          >
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ width: "24px", height: "24px" }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-            </svg>
-          </button>
-        </div>
+        {/* Arrows (Visible if more than 4 categories) */}
+        {categories.length > 4 && (
+          <div className="flex items-center justify-center mt-6" style={{ gap: 12 }} dir="ltr">
+            <button
+              className="flex items-center justify-center transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95"
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: "10px",
+                border: "2px solid #2E7D32",
+                background: "white",
+                color: "#2E7D32",
+                boxShadow: "0 4px 12px rgba(46,125,50,0.15)",
+              }}
+              onClick={() => {
+                const scrollAmount = isRTL ? 250 : -250;
+                document.getElementById("categories-grid")?.scrollBy({
+                  left: scrollAmount,
+                  behavior: "smooth",
+                });
+              }}
+            >
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ width: "24px", height: "24px", transform: "scaleX(-1)" }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </button>
+            <button
+              className="flex items-center justify-center transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95"
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: "10px",
+                border: "2px solid #2E7D32",
+                background: "white",
+                color: "#2E7D32",
+                boxShadow: "0 4px 12px rgba(46,125,50,0.15)",
+              }}
+              onClick={() => {
+                const scrollAmount = isRTL ? -250 : 250;
+                document.getElementById("categories-grid")?.scrollBy({
+                  left: scrollAmount,
+                  behavior: "smooth",
+                });
+              }}
+            >
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ width: "24px", height: "24px" }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

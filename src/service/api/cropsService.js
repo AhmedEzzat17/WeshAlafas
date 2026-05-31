@@ -38,7 +38,11 @@ const cropsService = {
    * @param {object|FormData} data – use FormData when uploading images
    */
   create: (data) => {
-    return axiosClient.post(ADMIN_ENDPOINT, data);
+    return axiosClient.post(ADMIN_ENDPOINT, data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
   },
 
   /**
@@ -52,7 +56,11 @@ const cropsService = {
     if (data instanceof FormData) {
       // Laravel trick: POST with _method=PUT for file uploads
       data.append("_method", "PUT");
-      return axiosClient.post(`${ADMIN_ENDPOINT}/${id}`, data);
+      return axiosClient.post(`${ADMIN_ENDPOINT}/${id}`, data, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
     }
     return axiosClient.put(`${ADMIN_ENDPOINT}/${id}`, data);
   },

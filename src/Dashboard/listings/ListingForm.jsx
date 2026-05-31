@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
+import { useDashboardData } from "../shared/DashboardDataContext";
 import { listingsService, cropsService } from "../../service/api";
 import { 
   ChevronRight, 
@@ -23,12 +24,61 @@ import {
 import { getImageUrl } from "../../utils/imageUrl";
 import toast from "react-hot-toast";
 
+function parseOrigin(text) {
+  if (!text) return { text: "", originAr: "", originEn: "" };
+  const arMatch = text.match(/\[originAr:(.*?)\]/);
+  const enMatch = text.match(/\[originEn:(.*?)\]/);
+  const originAr = arMatch ? arMatch[1] : "";
+  const originEn = enMatch ? enMatch[1] : "";
+  const cleanedText = text
+    .replace(/\[originAr:.*?\]/g, "")
+    .replace(/\[originEn:.*?\]/g, "")
+    .trim();
+  return { text: cleanedText, originAr, originEn };
+}
+
+function encodeOrigin(text, originAr, originEn) {
+  let cleaned = (text || "")
+    .replace(/\[originAr:.*?\]/g, "")
+    .replace(/\[originEn:.*?\]/g, "")
+    .trim();
+  if (originAr) cleaned += ` [originAr:${originAr}]`;
+  if (originEn) cleaned += ` [originEn:${originEn}]`;
+  return cleaned;
+}
+
+function parseBilingualText(text) {
+  if (!text) return { ar: "", en: "", original: "" };
+  const arMatch = text.match(/\[ar:(.*?)\]/);
+  const enMatch = text.match(/\[en:(.*?)\]/);
+  if (arMatch || enMatch) {
+    return {
+      ar: arMatch ? arMatch[1] : "",
+      en: enMatch ? enMatch[1] : "",
+      original: text,
+    };
+  }
+  return {
+    ar: text,
+    en: text,
+    original: text,
+  };
+}
+
+function encodeBilingual(ar, en) {
+  if (!ar && !en) return "";
+  if (!ar) return en;
+  if (!en) return ar;
+  return `[ar:${ar}][en:${en}]`;
+}
+
 export default function ListingForm() {
   const { id } = useParams();
   const isEditing = Boolean(id);
   const navigate = useNavigate();
   const { locale, direction } = useLanguage();
   const isRTL = direction === "rtl";
+  const { refreshProducts } = useDashboardData();
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEditing);
@@ -42,18 +92,23 @@ export default function ListingForm() {
 
   const [formData, setFormData] = useState({
     crop_id: "",
-    title: "",
-    description: "",
+    title_ar: "",
+    title_en: "",
+    description_ar: "",
+    description_en: "",
     type: "SPOT",
     quantity: "",
     quality_grade: "",
     price_per_unit: "",
     harvest_date: "",
-    storage_information: "",
+    storage_information_ar: "",
+    storage_information_en: "",
     expiry_duration: "",
     usage: "",
     min_order_quantity: "",
-    status: "PUBLISHED"
+    status: "PUBLISHED",
+    origin_ar: "",
+    origin_en: ""
   });
 
   const [mainImage, setMainImage] = useState(null);
@@ -73,20 +128,29 @@ export default function ListingForm() {
         const res = await listingsService.getById(id);
         if (res.success) {
           const d = res.data;
+          const parsed = parseOrigin(d.storage_information || "");
+          const parsedStorageText = parseBilingualText(parsed.text);
+          const parsedTitle = parseBilingualText(d.title || "");
+          const parsedDesc = parseBilingualText(d.description || "");
           setFormData({
             crop_id: d.crop_id || "",
-            title: d.title || "",
-            description: d.description || "",
+            title_ar: parsedTitle.ar || parsedTitle.original || "",
+            title_en: parsedTitle.en || parsedTitle.original || "",
+            description_ar: parsedDesc.ar || parsedDesc.original || "",
+            description_en: parsedDesc.en || parsedDesc.original || "",
             type: d.type || "SPOT",
             quantity: d.quantity || "",
             quality_grade: d.quality_grade || "",
             price_per_unit: d.price_per_unit || "",
             harvest_date: d.harvest_date || "",
-            storage_information: d.storage_information || "",
+            storage_information_ar: parsedStorageText.ar || parsedStorageText.original || "",
+            storage_information_en: parsedStorageText.en || parsedStorageText.original || "",
             expiry_duration: d.expiry_duration || "",
             usage: d.usage || "",
             min_order_quantity: d.min_order_quantity || "",
             status: d.status || "PUBLISHED",
+            origin_ar: parsed.originAr || "",
+            origin_en: parsed.originEn || ""
           });
           if (d.image) setImagePreview(getImageUrl(d.image));
           
@@ -116,6 +180,15 @@ export default function ListingForm() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 10240 * 1024) {
+        toast.error(
+          locale === "ar"
+            ? "حجم الصورة كبير جداً! يجب ألا يتجاوز حجم الصورة 10 ميجابايت."
+            : "Image size is too large! The image must not exceed 10MB."
+        );
+        e.target.value = "";
+        return;
+      }
       setMainImage(file);
       setImagePreview(URL.createObjectURL(file));
     }
@@ -123,6 +196,15 @@ export default function ListingForm() {
 
   const handleGalleryChange = (e) => {
     const files = Array.from(e.target.files);
+    const oversizedFiles = files.filter(f => f.size > 10240 * 1024);
+    if (oversizedFiles.length > 0) {
+      toast.error(
+        locale === "ar"
+          ? "بعض الصور كبيرة جداً! يجب ألا تتجاوز أي صورة في المعرض 10 ميجابايت."
+          : "Some images are too large! No gallery image can exceed 10MB."
+      );
+      return;
+    }
     if (files.length > 0) {
       setGalleryImages(prev => [...prev, ...files]);
       const newPreviews = files.map(file => URL.createObjectURL(file));
@@ -137,14 +219,57 @@ export default function ListingForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (mainImage && mainImage.size > 10240 * 1024) {
+      toast.error(
+        locale === "ar"
+          ? "حجم الصورة كبير جداً! الحد الأقصى هو 10 ميجابايت."
+          : "The image must not be greater than 10MB."
+      );
+      return;
+    }
+    const oversizedGallery = galleryImages.some(f => f.size > 10240 * 1024);
+    if (oversizedGallery) {
+      toast.error(
+        locale === "ar"
+          ? "يوجد صور في المعرض تتجاوز حجم 10 ميجابايت."
+          : "Some gallery images exceed 10MB."
+      );
+      return;
+    }
     setLoading(true);
     setErrors({});
 
     try {
       const data = new FormData();
       
+      const encodedStorageInfo = encodeBilingual(formData.storage_information_ar, formData.storage_information_en);
+      // Encode origin into storage_information
+      const finalStorageInfo = encodeOrigin(
+        encodedStorageInfo,
+        formData.origin_ar,
+        formData.origin_en
+      );
+
+      // Clone formData and replace storage_information
+      const submissionData = {
+        ...formData,
+        title: encodeBilingual(formData.title_ar, formData.title_en),
+        description: encodeBilingual(formData.description_ar, formData.description_en),
+        storage_information: finalStorageInfo
+      };
+      
+      // Delete origin fields from submission payload
+      delete submissionData.title_ar;
+      delete submissionData.title_en;
+      delete submissionData.description_ar;
+      delete submissionData.description_en;
+      delete submissionData.storage_information_ar;
+      delete submissionData.storage_information_en;
+      delete submissionData.origin_ar;
+      delete submissionData.origin_en;
+
       // Basic fields
-      Object.entries(formData).forEach(([key, val]) => {
+      Object.entries(submissionData).forEach(([key, val]) => {
         if (val !== null && val !== "") {
           data.append(key, val);
         }
@@ -170,6 +295,7 @@ export default function ListingForm() {
         : await listingsService.create(data);
 
       if (res.success) {
+        if (refreshProducts) await refreshProducts();
         toast.success(locale === "ar" ? "تم حفظ العرض بنجاح!" : "Listing saved successfully!");
         navigate("/dashboard/my-listings");
       } else {
@@ -246,17 +372,30 @@ export default function ListingForm() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div>
-                <label className="dashboard-label">{locale === "ar" ? "عنوان العرض *" : "Listing Title *"}</label>
-                <input 
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  className="dashboard-input"
-                  placeholder={locale === "ar" ? "مثلاً: محصول بطاطس ممتاز للحصاد القادم" : "e.g. Premium Potato Crop for next harvest"}
-                  required
-                />
-                {errors.title && <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>{errors.title[0]}</p>}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                <div>
+                  <label className="dashboard-label">{locale === "ar" ? "عنوان العرض (عربي) *" : "Listing Title (Arabic) *"}</label>
+                  <input 
+                    name="title_ar"
+                    value={formData.title_ar}
+                    onChange={handleChange}
+                    className="dashboard-input"
+                    placeholder={locale === "ar" ? "مثلاً: محصول بطاطس ممتاز" : "e.g. Premium Potato Crop"}
+                    required
+                  />
+                  {errors.title && <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>{errors.title[0]}</p>}
+                </div>
+                <div>
+                  <label className="dashboard-label">{locale === "ar" ? "عنوان العرض (إنجليزي) *" : "Listing Title (English) *"}</label>
+                  <input 
+                    name="title_en"
+                    value={formData.title_en}
+                    onChange={handleChange}
+                    className="dashboard-input"
+                    placeholder={locale === "ar" ? "مثلاً: Premium Potato Crop" : "e.g. Premium Potato Crop"}
+                    required
+                  />
+                </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
@@ -296,16 +435,29 @@ export default function ListingForm() {
                 </div>
               </div>
 
-              <div>
-                <label className="dashboard-label">{locale === "ar" ? "الوصف" : "Description"}</label>
-                <textarea 
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  className="dashboard-textarea"
-                  rows={4}
-                  placeholder={locale === "ar" ? "تفاصيل إضافية عن المحصول، الجودة، طرق التعبئة..." : "Additional details about crop, quality, packaging..."}
-                />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                <div>
+                  <label className="dashboard-label">{locale === "ar" ? "الوصف (عربي)" : "Description (Arabic)"}</label>
+                  <textarea 
+                    name="description_ar"
+                    value={formData.description_ar}
+                    onChange={handleChange}
+                    className="dashboard-textarea"
+                    rows={4}
+                    placeholder={locale === "ar" ? "تفاصيل إضافية عن المحصول، الجودة، طرق التعبئة..." : "Additional details about crop, quality, packaging..."}
+                  />
+                </div>
+                <div>
+                  <label className="dashboard-label">{locale === "ar" ? "الوصف (إنجليزي)" : "Description (English)"}</label>
+                  <textarea 
+                    name="description_en"
+                    value={formData.description_en}
+                    onChange={handleChange}
+                    className="dashboard-textarea"
+                    rows={4}
+                    placeholder={locale === "ar" ? "تفاصيل إضافية عن المحصول..." : "Additional details about crop..."}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -404,15 +556,47 @@ export default function ListingForm() {
                   placeholder='e.g. 15 Days'
                 />
               </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label className="dashboard-label">{locale === "ar" ? "معلومات التخزين" : "Storage Info"}</label>
+              <div>
+                <label className="dashboard-label">{locale === "ar" ? "بلد المنشأ بالعربية" : "Origin in Arabic"}</label>
                 <input 
-                  name="storage_information"
-                  value={formData.storage_information}
+                  name="origin_ar"
+                  value={formData.origin_ar}
                   onChange={handleChange}
                   className="dashboard-input"
-                  placeholder={locale === "ar" ? "مثلاً: يحفظ في مكان بارد وجاف" : "e.g. Store in a cool dry place"}
+                  placeholder={locale === "ar" ? "مثلاً: مزارع الإسماعيلية، مصر" : "e.g. Ismailia, Egypt"}
                 />
+              </div>
+              <div>
+                <label className="dashboard-label">{locale === "ar" ? "بلد المنشأ بالإنجليزية" : "Origin in English"}</label>
+                <input 
+                  name="origin_en"
+                  value={formData.origin_en}
+                  onChange={handleChange}
+                  className="dashboard-input"
+                  placeholder={locale === "ar" ? "مثلاً: Egypt" : "e.g. Egypt"}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                <div>
+                  <label className="dashboard-label">{locale === "ar" ? "معلومات التخزين (عربي)" : "Storage Info (Arabic)"}</label>
+                  <input 
+                    name="storage_information_ar"
+                    value={formData.storage_information_ar}
+                    onChange={handleChange}
+                    className="dashboard-input"
+                    placeholder={locale === "ar" ? "مثلاً: يحفظ في مكان بارد وجاف" : "e.g. Store in a cool dry place"}
+                  />
+                </div>
+                <div>
+                  <label className="dashboard-label">{locale === "ar" ? "معلومات التخزين (إنجليزي)" : "Storage Info (English)"}</label>
+                  <input 
+                    name="storage_information_en"
+                    value={formData.storage_information_en}
+                    onChange={handleChange}
+                    className="dashboard-input"
+                    placeholder={locale === "ar" ? "مثلاً: Store in a cool dry place" : "e.g. Store in a cool dry place"}
+                  />
+                </div>
               </div>
             </div>
           </div>

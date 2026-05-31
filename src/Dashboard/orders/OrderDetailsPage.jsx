@@ -135,6 +135,16 @@ export default function OrderDetailsPage() {
     return statuses[status] || { labelAr: status, labelEn: status, color: "#6B7280", bg: "#F3F4F6", class: "info", icon: Package };
   };
 
+  const getTitle = (title) => {
+    if (!title) return "";
+    const arMatch = title.match(/\[ar:(.*?)\]/);
+    const enMatch = title.match(/\[en:(.*?)\]/);
+    if (arMatch || enMatch) {
+      return locale === "ar" ? (arMatch ? arMatch[1] : "") : (enMatch ? enMatch[1] : "");
+    }
+    return title;
+  };
+
   if (loading) {
     return (
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "60vh", gap: 16 }}>
@@ -246,7 +256,7 @@ export default function OrderDetailsPage() {
                         <img src={getImageUrl(listing.image || listing.images?.[0]?.image_path)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     </div>
                     <div style={{ flex: 1 }}>
-                        <h4 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>{listing.title}</h4>
+                        <h4 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>{getTitle(listing.title)}</h4>
                         <p style={{ fontSize: 13, color: "#64748B", marginBottom: 6 }}>
                           {locale === "ar" ? listing.crop?.name_ar : listing.crop?.name_en}
                         </p>
@@ -423,7 +433,7 @@ export default function OrderDetailsPage() {
                 return (
                   <tr key={item.id || index}>
                     <td style={{ padding: "20px", borderBottom: "1px solid #F1F5F9" }}>
-                        <p style={{ fontSize: 16, fontWeight: 700, margin: "0 0 5px" }}>{listing.title}</p>
+                        <p style={{ fontSize: 16, fontWeight: 700, margin: "0 0 5px" }}>{getTitle(listing.title)}</p>
                         <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>{locale === "ar" ? listing.crop?.name_ar : listing.crop?.name_en}</p>
                     </td>
                     <td style={{ textAlign: "center", padding: "20px", borderBottom: "1px solid #F1F5F9", fontWeight: 600 }}>{item.quantity || 1}</td>

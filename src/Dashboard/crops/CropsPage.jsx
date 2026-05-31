@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
 import { cropsService, categoriesService } from "../../service/api";
+import { useDashboardData } from "../shared/DashboardDataContext";
 import { getImageUrl } from "../../utils/imageUrl";
 import { 
   Plus, 
@@ -25,6 +26,7 @@ export default function CropsPage() {
   const { locale, direction } = useLanguage();
   const isRTL = direction === "rtl";
   const navigate = useNavigate();
+  const { refreshCrops } = useDashboardData();
   
   const [crops, setCrops] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -58,6 +60,7 @@ export default function CropsPage() {
     try {
       const res = await cropsService.delete(id);
       if (res.success) {
+        if (refreshCrops) await refreshCrops();
         toast.success(locale === "ar" ? "تم الحذف بنجاح" : "Deleted successfully");
         setCrops(prev => prev.filter(c => c.id !== id));
       }

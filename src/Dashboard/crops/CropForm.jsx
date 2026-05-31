@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
 import { cropsService, categoriesService } from "../../service/api";
+import { useDashboardData } from "../shared/DashboardDataContext";
 import { 
   ChevronRight, 
   ChevronLeft, 
@@ -25,6 +26,7 @@ export default function CropForm() {
   const navigate = useNavigate();
   const { locale, direction } = useLanguage();
   const isRTL = direction === "rtl";
+  const { refreshCrops } = useDashboardData();
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEditing);
@@ -96,15 +98,36 @@ export default function CropForm() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // 10240 KB = 10MB
+      if (file.size > 10240 * 1024) {
+        toast.error(
+          locale === "ar"
+            ? "حجم الصورة كبير جداً! يجب ألا يتجاوز حجم الصورة 10 ميجابايت."
+            : "Image size is too large! The image must not exceed 10MB."
+        );
+        e.target.value = ""; // Reset the input file
+        return;
+      }
       setMainImage(file);
       setImagePreview(URL.createObjectURL(file));
+      if (errors.image) setErrors(prev => ({ ...prev, image: null }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setErrors({});
+
+    if (mainImage && mainImage.size > 10240 * 1024) {
+      const errMsg = locale === "ar"
+        ? "حجم الصورة كبير جداً! الحد الأقصى هو 10 ميجابايت."
+        : "The image must not be greater than 10MB.";
+      toast.error(errMsg);
+      setErrors({ image: [errMsg] });
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const data = new FormData();
@@ -126,6 +149,7 @@ export default function CropForm() {
         : await cropsService.create(data);
 
       if (res.success) {
+        if (refreshCrops) await refreshCrops();
         toast.success(locale === "ar" ? "تم حفظ المحصول بنجاح!" : "Crop saved successfully!");
         navigate("/dashboard/crops");
       } else {
@@ -253,6 +277,26 @@ export default function CropForm() {
                     </optgroup>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="dashboard-label">{locale === "ar" ? "بلد المنشأ بالعربية" : "Origin in Arabic"}</label>
+                <input 
+                  name="origin_ar"
+                  value={formData.origin_ar}
+                  onChange={handleChange}
+                  className="dashboard-input"
+                  placeholder={locale === "ar" ? "مثال: مزارع الإسماعيلية، مصر" : "e.g. Ismailia, Egypt"}
+                />
+              </div>
+              <div>
+                <label className="dashboard-label">{locale === "ar" ? "بلد المنشأ بالإنجليزية" : "Origin in English"}</label>
+                <input 
+                  name="origin_en"
+                  value={formData.origin_en}
+                  onChange={handleChange}
+                  className="dashboard-input"
+                  placeholder={locale === "ar" ? "مثال: Ismailia, Egypt" : "e.g. Ismailia, Egypt"}
+                />
               </div>
             </div>
           </div>

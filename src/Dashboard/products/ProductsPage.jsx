@@ -26,7 +26,9 @@ export default function ProductsPage() {
   const filteredProducts = products.filter((prod) => {
     const q = searchQuery.toLowerCase();
     const matchesSearch = prod.nameEn.toLowerCase().includes(q) || prod.nameAr.includes(searchQuery);
-    const matchesCategory = filterCategory === "all" || prod.category === filterCategory || prod.categorySlug === filterCategory;
+    const matchesCategory = filterCategory === "all" || 
+      String(prod.categoryId) === String(filterCategory) || 
+      String(prod.rootCategoryId) === String(filterCategory);
     return matchesSearch && matchesCategory;
   });
 
@@ -73,11 +75,14 @@ export default function ProductsPage() {
           <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={locale === "ar" ? "بحث عن منتج..." : "Search products..."} className="dashboard-input" style={{ paddingLeft: isRTL ? 16 : 44, paddingRight: isRTL ? 44 : 16 }} />
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {allCategories.map((cat) => (
-            <button key={cat.en} onClick={() => setFilterCategory(cat.en)} style={{ padding: "8px 16px", borderRadius: 10, border: filterCategory === cat.en ? "1px solid #2E7D32" : "1px solid #E2E8F0", background: filterCategory === cat.en ? "rgba(46,125,50,0.08)" : "transparent", color: filterCategory === cat.en ? "#2E7D32" : "#64748B", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}>
-              {locale === "ar" ? cat.ar : cat.en}
-            </button>
-          ))}
+          {allCategories.map((cat) => {
+            const catId = cat.en === "all" ? "all" : cat.id;
+            return (
+              <button key={catId} onClick={() => setFilterCategory(catId)} style={{ padding: "8px 16px", borderRadius: 10, border: filterCategory === catId ? "1px solid #2E7D32" : "1px solid #E2E8F0", background: filterCategory === catId ? "rgba(46,125,50,0.08)" : "transparent", color: filterCategory === catId ? "#2E7D32" : "#64748B", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}>
+                {locale === "ar" ? cat.ar : cat.en}
+              </button>
+            );
+          })}
         </div>
       </div>
 

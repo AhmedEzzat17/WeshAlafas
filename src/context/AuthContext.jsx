@@ -153,6 +153,66 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // ── Social Login ──────────────────────────────────────────────────────
+  const loginWithSocial = useCallback(async (provider, accessToken) => {
+    setLoading(true);
+    try {
+      const response = await authService.socialLogin(provider, accessToken);
+      
+      // Check Scenario A or Scenario B
+      // If registration_completed is false, it is Scenario B (New User)
+      const data = response.data || response;
+      if (data.registration_completed === false) {
+        return {
+          success: true,
+          registrationCompleted: false,
+          socialDetails: data.social_details || {}
+        };
+      }
+
+      // Scenario A: User Exists (Login Completed)
+      const userToStore = normaliseUserResponse(response);
+      setUser(userToStore);
+      persistUser(userToStore);
+
+      return { success: true, registrationCompleted: true, user: userToStore };
+    } catch (err) {
+      console.error("Social Login Error:", err);
+      let errorMsg = "فشل تسجيل الدخول الاجتماعي.";
+      if (err.message) {
+        errorMsg = err.message;
+      }
+      return { success: false, error: errorMsg };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ── Social Register ───────────────────────────────────────────────────
+  const registerWithSocial = useCallback(async (formData) => {
+    setLoading(true);
+    try {
+      const response = await authService.socialRegister(formData);
+      const userToStore = normaliseUserResponse(response);
+
+      setUser(userToStore);
+      persistUser(userToStore);
+
+      return { success: true, user: userToStore };
+    } catch (err) {
+      console.error("Social Register Error:", err);
+      let errorMsg = "فشل إكمال إنشاء الحساب الاجتماعي.";
+      if (err.errors && Object.keys(err.errors).length > 0) {
+        errorMsg = Object.values(err.errors)[0];
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      return { success: false, error: errorMsg, errors: err.errors };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // ── Get current user ──────────────────────────────────────────────────
   const fetchUser = useCallback(async () => {
     if (!user?.token) return null;
@@ -200,6 +260,8 @@ export function AuthProvider({ children }) {
         user,
         login,
         register,
+        loginWithSocial,
+        registerWithSocial,
         logout,
         fetchUser,
         loading,

@@ -3,27 +3,18 @@ import { Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, isOffer = false }) {
   const { locale, direction } = useLanguage();
   const { toggleCart, toggleWishlist, isInWishlist, isInCart, addToCart } = useCart();
   const isRTL = direction === "rtl";
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const isOfferMode = isOffer || !!product.oldPrice;
 
-  // Short tagline under title
-  const taglines = {
-    1: { en: "🍎 Farm Fresh • Organic", ar: "🍎 طازج من المزرعة • عضوي" },
-    2: { en: "🍓 Sweet & Juicy • Vitamin C", ar: "🍓 حلو وعصيري • فيتامين سي" },
-    3: { en: "🍌 Energy Boost • Potassium", ar: "🍌 طاقة ونشاط • بوتاسيوم" },
-    4: { en: "🥑 Healthy Fats • Creamy", ar: "🥑 دهون صحية • كريمي" },
-    5: { en: "🍇 Seedless • Sweet", ar: "🍇 بدون بذور • حلو" },
-    6: { en: "🍊 Vitamin C • Fresh", ar: "🍊 فيتامين سي • طازج" },
-    7: { en: "🫐 Antioxidants • Super", ar: "🫐 مضادات أكسدة • سوبر" },
-    8: { en: "🥭 Tropical • Sweet", ar: "🥭 استوائي • حلو" },
-  };
-  const tagline = taglines[product.id] || {
-    en: "✨ Premium Quality",
+  // Tagline under title
+  const tagline = {
     ar: "✨ جودة ممتازة",
+    en: "✨ Premium Quality"
   };
 
   const isWished = isInWishlist(product.id);
@@ -58,6 +49,18 @@ export default function ProductCard({ product }) {
         className="group bg-white flex flex-col overflow-hidden hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 relative h-full"
         style={{ borderRadius: 16, border: "1px solid #ececec" }}
       >
+        {/* Shine Effect */}
+        <div 
+          className="absolute inset-0 pointer-events-none z-20"
+        >
+          <div 
+            className="absolute top-0 bottom-0 -left-[100%] w-1/2 opacity-0 group-hover:opacity-100 group-hover:left-[200%] transition-all duration-1000 ease-in-out"
+            style={{
+              background: "linear-gradient(to right, transparent, rgba(255,255,255,0.7), transparent)",
+              transform: "skewX(-25deg)",
+            }}
+          />
+        </div>
         {/* Badge */}
         <div
           className={`absolute z-10 text-white font-bold ${product.badgeColor || "bg-flash"}`}
@@ -175,10 +178,10 @@ export default function ProductCard({ product }) {
           {/* Price & Buttons */}
           <div
             className="mt-auto flex items-end justify-between"
-            style={{ gap: 6 }}
+            style={{ gap: 4 }}
           >
             {/* Price */}
-            <div>
+            <div style={{ minWidth: 0, flex: 1, paddingInlineEnd: 4, wordBreak: "break-word" }}>
               {product.oldPrice && (
                 <span
                   className="text-gray-300 line-through font-medium block"
@@ -188,15 +191,19 @@ export default function ProductCard({ product }) {
                 </span>
               )}
               <span
-                className="font-extrabold text-primary"
-                style={{ fontSize: "clamp(16px, 4vw, 20px)", lineHeight: 1.3 }}
+                className={`font-extrabold ${isOfferMode ? "text-orange-500" : "text-primary"}`}
+                style={{
+                  fontSize: "clamp(16px, 4vw, 20px)",
+                  lineHeight: 1.3,
+                  color: isOfferMode ? "#F97316" : undefined
+                }}
               >
                 {product.price.toFixed(2)} {locale === "ar" ? "ج.م" : "EGP"}
               </span>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center" style={{ gap: 6 }}>
+            <div className="flex items-center shrink-0" style={{ gap: 6 }}>
               {/* Fav Button */}
               <button
                 className={`flex items-center justify-center transition-all duration-200 active:scale-90 w-8 h-8 sm:w-[34px] sm:h-[34px] shrink-0 border border-solid rounded-[10px] ${
@@ -231,10 +238,39 @@ export default function ProductCard({ product }) {
               <button
                 className={`flex items-center justify-center transition-all duration-200 shadow-md active:scale-90 w-8 h-8 sm:w-[34px] sm:h-[34px] shrink-0 rounded-[10px] ${
                   inCart
-                    ? "bg-primary/15 text-primary border-[1.5px] border-solid border-primary/30"
-                    : "bg-primary text-white border-none hover:bg-primary-dark shadow-primary/25"
+                    ? isOfferMode
+                      ? "bg-orange-500/15 text-orange-500 border-[1.5px] border-solid border-orange-500/30"
+                      : "bg-primary/15 text-primary border-[1.5px] border-solid border-primary/30"
+                    : isOfferMode
+                      ? "bg-orange-500 text-white border-none hover:bg-orange-600 shadow-orange-500/25"
+                      : "bg-primary text-white border-none hover:bg-primary-dark shadow-primary/25"
                 }`}
-                style={{ cursor: "pointer" }}
+                style={{ 
+                  cursor: "pointer",
+                  backgroundColor: inCart
+                    ? isOfferMode
+                      ? "rgba(249, 115, 22, 0.15)"
+                      : undefined
+                    : isOfferMode
+                      ? "#F97316"
+                      : undefined,
+                  color: isOfferMode
+                    ? inCart
+                      ? "#F97316"
+                      : "#ffffff"
+                    : undefined,
+                  borderColor: isOfferMode && inCart ? "rgba(249, 115, 22, 0.3)" : undefined
+                }}
+                onMouseOver={(e) => {
+                  if (isOfferMode && !inCart) {
+                    e.currentTarget.style.backgroundColor = "#ea580c";
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (isOfferMode && !inCart) {
+                    e.currentTarget.style.backgroundColor = "#F97316";
+                  }
+                }}
                 aria-label={
                   inCart
                     ? locale === "ar"

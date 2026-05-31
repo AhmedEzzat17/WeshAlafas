@@ -3,6 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useDashboardData } from "../Dashboard/shared/DashboardDataContext";
 import ProductCard from "../components/ProductCard";
+import { ProductSkeleton, FilterSidebarSkeleton } from "../components/Skeleton";
 
 const FilterSectionTitle = ({ icon, children }) => (
   <div className="flex items-center gap-2.5" style={{ marginBottom: 14 }}>
@@ -15,35 +16,37 @@ const FilterSectionTitle = ({ icon, children }) => (
 
 export default function FilterPage() {
   const { locale, direction } = useLanguage();
-  const { products: mockProducts, categories: apiCategories } = useDashboardData();
+  const { products, categories: apiCategories, offers: apiOffers, loading } = useDashboardData();
   const isRTL = direction === "rtl";
   const location = useLocation();
 
   const queryParams = new URLSearchParams(location.search);
   const initialSearch = queryParams.get("search") || "";
   const initialCategory = queryParams.get("category") || "all";
+  const initialOfferId = queryParams.get("offer_id");
 
   const [search, setSearch] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  const [selectedOfferId, setSelectedOfferId] = useState(initialOfferId);
 
   // Calculate actual price bounds from products
   const { minHardBound, maxHardBound } = useMemo(() => {
-    if (!mockProducts || mockProducts.length === 0) return { minHardBound: 0, maxHardBound: 10000 };
-    const prices = mockProducts.map(p => p.price);
+    if (!products || products.length === 0) return { minHardBound: 0, maxHardBound: 10000 };
+    const prices = products.map(p => p.price);
     return {
       minHardBound: Math.floor(Math.min(...prices)),
       maxHardBound: Math.ceil(Math.max(...prices))
     };
-  }, [mockProducts]);
+  }, [products]);
 
   const [priceRange, setPriceRange] = useState([0, 10000]);
 
   // Sync state with bounds on initial load if products are available
   useEffect(() => {
-    if (mockProducts.length > 0) {
+    if (products.length > 0) {
       setPriceRange([minHardBound, maxHardBound]);
     }
-  }, [mockProducts, minHardBound, maxHardBound]);
+  }, [products, minHardBound, maxHardBound]);
 
   const [isReadyToShip, setIsReadyToShip] = useState(true);
   const [selectedRating, setSelectedRating] = useState(0);
@@ -59,24 +62,37 @@ export default function FilterPage() {
   useEffect(() => {
     const qSearch = queryParams.get("search");
     const qCat = queryParams.get("category");
-    
+    const qOffer = queryParams.get("offer_id");
+
     if (qSearch !== null) setSearch(qSearch);
     if (qCat !== null) setSelectedCategory(qCat);
+
+    if (qOffer !== null) setSelectedOfferId(qOffer);
+    else setSelectedOfferId(null);
   }, [location.search]);
 
-  // Dynamic Categories from API
+  // Dynamic Categories from API — no hardcoded items
   const categories = useMemo(() => {
     const core = [
       { id: "all", en: "All Products", ar: "جميع المنتجات" },
+      { id: "offers", en: "Exclusive Offers", ar: "العروض الحصرية" }
     ];
-    // Map API categories to filter format
-    const fromApi = apiCategories.map(cat => ({
-      id: cat.id, // Or slug if you prefer
-      slug: cat.slug,
-      en: cat.nameEn,
-      ar: cat.nameAr
-    }));
-    return [...core, ...fromApi, { id: "offers", en: "Special Offers", ar: "العروض" }];
+    // Map API categories to filter format using real ID
+    const fromApi = apiCategories
+      .filter(cat => 
+        cat.slug !== "offers" && 
+        cat.nameAr !== "العروض" && 
+        cat.nameAr !== "العروض الحصرية" && 
+        cat.nameAr !== "العروض الحصريه" && 
+        String(cat.id) !== "offers"
+      )
+      .map(cat => ({
+        id: cat.id,    // real numeric ID used by products for filtering
+        slug: cat.slug,
+        en: cat.nameEn,
+        ar: cat.nameAr
+      }));
+    return [...core, ...fromApi];
   }, [apiCategories]);
 
   const sortOptions = [
@@ -97,29 +113,46 @@ export default function FilterPage() {
   };
 
   const filteredProducts = useMemo(() => {
-    let result = [...mockProducts];
+    let result = [...products];
 
     // 1. Search Filter
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter((p) => 
-        p.nameEn.toLowerCase().includes(q) || 
-        p.nameAr.includes(q) || 
+      result = result.filter((p) =>
+        p.nameEn?.toLowerCase().includes(q) ||
+        p.nameAr?.includes(q) ||
         p.descriptionEn?.toLowerCase().includes(q)
       );
     }
 
-    // 2. Category Filter
-    if (selectedCategory !== "all") {
-      if (selectedCategory === "offers") {
-        result = result.filter((p) => p.oldPrice != null);
+    // 2. Offer Filter OR Category Filter
+    if (selectedOfferId && apiOffers) {
+      const offer = apiOffers.find((o) => String(o.id) === String(selectedOfferId));
+      if (offer && offer.listings) {
+        const offerListingIds = offer.listings.map((l) => String(l.id || l));
+        result = result.filter((p) => offerListingIds.includes(String(p.id)));
       } else {
-        result = result.filter((p) => 
-          p.category === selectedCategory || 
-          p.categorySlug === selectedCategory ||
-          p.categoryId === selectedCategory // Fallback to ID
-        );
+        result = [];
       }
+    } else if (selectedCategory === "offers" && apiOffers) {
+      // Collect all product IDs from all offers
+      const allOfferProductIds = new Set();
+      apiOffers.forEach(offer => {
+        if (offer.listings) {
+          offer.listings.forEach(l => {
+            allOfferProductIds.add(String(l.id || l));
+          });
+        }
+      });
+      result = result.filter((p) => allOfferProductIds.has(String(p.id)));
+    } else if (selectedCategory !== "all") {
+      // Filter by category ID — matching what comes from the API
+      result = result.filter((p) =>
+        String(p.categoryId) === String(selectedCategory) ||
+        String(p.rootCategoryId) === String(selectedCategory) ||
+        p.categorySlug === selectedCategory ||
+        p.category === String(selectedCategory)
+      );
     }
 
     // 3. Price Filter
@@ -133,11 +166,11 @@ export default function FilterPage() {
     // 5. Sorting
     if (sortBy === "price_asc") result.sort((a, b) => a.price - b.price);
     else if (sortBy === "price_desc") result.sort((a, b) => b.price - a.price);
-    else if (sortBy === "az") result.sort((a, b) => locale === "ar" ? a.nameAr.localeCompare(b.nameAr) : a.nameEn.localeCompare(b.nameEn));
-    else if (sortBy === "za") result.sort((a, b) => locale === "ar" ? b.nameAr.localeCompare(a.nameAr) : b.nameEn.localeCompare(a.nameEn));
+    else if (sortBy === "az") result.sort((a, b) => locale === "ar" ? a.nameAr?.localeCompare(b.nameAr) : a.nameEn?.localeCompare(b.nameEn));
+    else if (sortBy === "za") result.sort((a, b) => locale === "ar" ? b.nameAr?.localeCompare(a.nameAr) : b.nameEn?.localeCompare(a.nameEn));
 
     return result;
-  }, [mockProducts, search, selectedCategory, priceRange, sortBy, selectedRating, locale]);
+  }, [products, search, selectedCategory, selectedOfferId, apiOffers, priceRange, sortBy, selectedRating, locale]);
 
   /* ——— The sidebar filters content ——— */
   const renderFilters = () => (
@@ -164,7 +197,11 @@ export default function FilterPage() {
           {categories.map((cat) => {
             const active = selectedCategory === cat.id;
             return (
-              <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
+              <button key={cat.id} onClick={() => {
+                setSelectedCategory(cat.id);
+                setSelectedOfferId(null); // clear offer selection when category is selected
+                setShowMobileFilters(false);
+              }}
                 className="transition-all duration-200 cursor-pointer"
                 style={{
                   display: "flex", alignItems: "center", gap: 10,
@@ -182,6 +219,7 @@ export default function FilterPage() {
           })}
         </div>
       </div>
+
 
       {/* ── Price Range ── */}
       <div style={{ marginBottom: 24, paddingTop: 4 }}>
@@ -205,10 +243,10 @@ export default function FilterPage() {
           <div className="relative h-6 flex items-center" style={{ marginTop: 10 }}>
             {/* Background Rail */}
             <div className="absolute w-full h-1.5 bg-gray-200 rounded-full" />
-            
+
             {/* Active Highlight Track */}
-            <div 
-              className="absolute h-1.5 bg-primary rounded-full transition-all" 
+            <div
+              className="absolute h-1.5 bg-primary rounded-full transition-all"
               style={{
                 [isRTL ? "right" : "left"]: `${((priceRange[0] - minHardBound) / (maxHardBound - minHardBound)) * 100}%`,
                 [isRTL ? "left" : "right"]: `${100 - ((priceRange[1] - minHardBound) / (maxHardBound - minHardBound)) * 100}%`
@@ -216,10 +254,10 @@ export default function FilterPage() {
             />
 
             {/* Hidden Input for Min */}
-            <input 
-              type="range" 
-              min={minHardBound} 
-              max={maxHardBound} 
+            <input
+              type="range"
+              min={minHardBound}
+              max={maxHardBound}
               step="1"
               value={priceRange[0]}
               onChange={(e) => {
@@ -231,10 +269,10 @@ export default function FilterPage() {
             />
 
             {/* Hidden Input for Max */}
-            <input 
-              type="range" 
-              min={minHardBound} 
-              max={maxHardBound} 
+            <input
+              type="range"
+              min={minHardBound}
+              max={maxHardBound}
               step="1"
               value={priceRange[1]}
               onChange={(e) => {
@@ -317,7 +355,7 @@ export default function FilterPage() {
             {locale === "ar" ? "جاهز للشحن" : "Ready to ship"}
           </span>
           <div className="relative">
-            <input type="checkbox" className="sr-only" checked={isReadyToShip} onChange={() => setIsReadyToShip(!isReadyToShip)} />
+            <input type="checkbox" className="sr-only" checked={isReadyToShip} onChange={() => { setIsReadyToShip(!isReadyToShip); setShowMobileFilters(false); }} />
             <div style={{ width: 44, height: 24, borderRadius: 12, background: isReadyToShip ? "#2E7D32" : "#d1d5db", transition: "background 0.2s" }} />
             <div style={{ position: "absolute", top: 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.15)", transition: "transform 0.2s", ...(isReadyToShip ? (isRTL ? { right: 23, left: "auto" } : { left: 23 }) : (isRTL ? { right: 3, left: "auto" } : { left: 3 })) }} />
           </div>
@@ -354,7 +392,7 @@ export default function FilterPage() {
                 }}>
                   {checked && <svg width="10" height="10" fill="none" stroke="#fff" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                 </span>
-                <input type="checkbox" className="sr-only" checked={checked} onChange={(e) => setQualityGrades((prev) => ({ ...prev, [grade.id]: e.target.checked }))} />
+                <input type="checkbox" className="sr-only" checked={checked} onChange={(e) => { setQualityGrades((prev) => ({ ...prev, [grade.id]: e.target.checked })); setShowMobileFilters(false); }} />
                 <span style={{ fontSize: 14, fontWeight: checked ? 600 : 500, color: checked ? "#2E7D32" : "#4b5563" }}>
                   {locale === "ar" ? grade.ar : grade.en}
                 </span>
@@ -362,6 +400,20 @@ export default function FilterPage() {
             );
           })}
         </div>
+      </div>
+
+      {/* ── Mobile Apply Button ── */}
+      <div className="lg:hidden mt-6">
+        <button 
+          onClick={() => setShowMobileFilters(false)}
+          className="w-full font-bold py-3.5 rounded-xl shadow-[0_8px_20px_rgba(46,125,50,0.25)] transition-colors active:scale-95 flex items-center justify-center gap-2"
+          style={{ background: "linear-gradient(135deg, #2E7D32, #1B5E20)", color: "#fff" }}
+        >
+          {locale === "ar" ? "عرض النتائج" : "Show Results"}
+          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" style={{ transform: isRTL ? "none" : "scaleX(-1)" }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
       </div>
     </>
   );
@@ -406,9 +458,13 @@ export default function FilterPage() {
 
           {/* ── Sidebar (Desktop) ── */}
           <aside className={`w-full lg:w-[310px] flex-shrink-0 ${showMobileFilters ? "block" : "hidden lg:block"}`} style={{ position: "sticky", top: 100, zIndex: 10 }}>
-            <div className="bg-white" style={{ borderRadius: 20, border: "1px solid #ececec", padding: "clamp(20px, 3vw, 28px)", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", animation: showMobileFilters ? "slideInFilter 0.3s ease-out" : "none", maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
-              {renderFilters()}
-            </div>
+            {loading ? (
+              <FilterSidebarSkeleton />
+            ) : (
+              <div className="bg-white" style={{ borderRadius: 20, border: "1px solid #ececec", padding: "clamp(20px, 3vw, 28px)", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", animation: showMobileFilters ? "slideInFilter 0.3s ease-out" : "none", maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
+                {renderFilters()}
+              </div>
+            )}
           </aside>
 
           {/* ── Main Content ── */}
@@ -438,7 +494,11 @@ export default function FilterPage() {
 
             {/* Grid  */}{/*//////////////////*/}{/* ProductCard  */}
             {/* Grid  */}{/*//////////////////*/}{/* ProductCard  */}
-            {filteredProducts.length > 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 2xl:grid-cols-4" style={{ gap: "clamp(10px, 2.5vw, 28px)" }}>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <ProductSkeleton key={i} />)}
+              </div>
+            ) : filteredProducts.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 2xl:grid-cols-4" style={{ gap: "clamp(10px, 2.5vw, 28px)" }}>
                 {filteredProducts.map((product, index) => (
                   <div key={product.id} className="h-full animate-fade-up-list" style={{ animationDelay: `${index * 0.08}s` }}>

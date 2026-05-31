@@ -4,11 +4,65 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { authService } from "../service/api";
 import toast from "react-hot-toast";
+import { loginWithGoogle, loginWithFacebook } from "../utils/socialAuth";
+import { ProfileHeaderSkeleton, ProfileMenuSkeleton } from "../components/Skeleton";
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, fetchUser } = useAuth();
   const { locale, direction, toggleLanguage } = useLanguage();
   const navigate = useNavigate();
+  const [linkingLoading, setLinkingLoading] = useState(null);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsPageLoading(false), 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleSocialLink = async (provider) => {
+    setLinkingLoading(provider);
+    
+    const triggerSdk = provider === "google" ? loginWithGoogle : loginWithFacebook;
+    
+    triggerSdk(
+      async (accessToken) => {
+        try {
+          const res = await authService.socialLink(provider, accessToken);
+
+          if (res.success) {
+            toast.success(locale === "ar" ? "تم ربط الحساب بنجاح!" : "Account linked successfully!");
+            await fetchUser();
+          } else {
+            toast.error(res.message || (locale === "ar" ? "فشل ربط الحساب" : "Failed to link account"));
+          }
+        } catch (err) {
+          console.error(`Social link error for ${provider}:`, err);
+          
+          let errorMsg = locale === "ar" ? "فشل ربط الحساب" : "Failed to link account";
+          if (err.raw?.message) {
+            errorMsg = err.raw.message;
+          } else if (err.message) {
+            errorMsg = err.message;
+          }
+          
+          if (err.raw?.error_code === "SOCIAL_ACCOUNT_ALREADY_LINKED") {
+            errorMsg = locale === "ar" 
+              ? "حساب التواصل هذا مرتبط بالفعل بملف مستخدم آخر." 
+              : "This social account is already linked to another user profile.";
+          }
+          
+          toast.error(errorMsg);
+        } finally {
+          setLinkingLoading(null);
+        }
+      },
+      (error) => {
+        console.error(`${provider} Auth SDK error:`, error);
+        toast.error(error?.message || (locale === "ar" ? `فشل الاتصال بـ ${provider}` : `Failed to connect to ${provider}`));
+        setLinkingLoading(null);
+      }
+    );
+  };
 
   // "menu" | "orders" | "payments" | "addresses" | "settings"
   const [currentView, setCurrentView] = useState("menu");
@@ -108,20 +162,29 @@ export default function ProfilePage() {
   );
 
   /* ===== RENDER MENU HUB ===== */
-  const renderMenu = () => (
-    <div style={{ animation: "fadeIn 0.3s ease-out" }}>
-      {/* Profile Summary Card */}
-      <div style={{
-        background: "linear-gradient(135deg, #2E7D32 0%, #1A4D2E 100%)",
-        borderRadius: 24,
-        padding: 32,
-        color: "#fff",
-        textAlign: "center",
-        marginBottom: 24,
-        boxShadow: "0 10px 30px rgba(46,125,50,0.15)",
-        position: "relative",
-        overflow: "hidden"
-      }}>
+  const renderMenu = () => {
+    if (isPageLoading) {
+      return (
+        <div style={{ animation: "fadeIn 0.3s ease-out" }}>
+          <ProfileHeaderSkeleton />
+          <ProfileMenuSkeleton />
+        </div>
+      );
+    }
+    return (
+      <div style={{ animation: "fadeIn 0.3s ease-out" }}>
+        {/* Profile Summary Card */}
+        <div style={{
+          background: "linear-gradient(135deg, #2E7D32 0%, #1A4D2E 100%)",
+          borderRadius: 24,
+          padding: 32,
+          color: "#fff",
+          textAlign: "center",
+          marginBottom: 24,
+          boxShadow: "0 10px 30px rgba(46,125,50,0.15)",
+          position: "relative",
+          overflow: "hidden"
+        }}>
         {/* Decorative background circle */}
         <div style={{ position: "absolute", top: -50, right: -50, width: 150, height: 150, background: "rgba(255,255,255,0.05)", borderRadius: "50%" }}></div>
 
@@ -229,6 +292,7 @@ export default function ProfilePage() {
       </div>
     </div>
   );
+};
 
   /* ===== RENDER ORDERS ===== */
   const renderOrders = () => (
@@ -405,6 +469,121 @@ export default function ProfilePage() {
             {/* Toggle styling */}
             <div style={{ width: 50, height: 28, background: "#2E7D32", borderRadius: 14, position: "relative", cursor: "pointer" }}>
               <div style={{ position: "absolute", top: 2, left: isRTL ? 2 : 24, width: 24, height: 24, background: "#fff", borderRadius: "50%", boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }} />
+            </div>
+          </div>
+
+          <div style={{ borderTop: "1px solid #f3f4f6" }} />
+
+          {/* Linked Accounts */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <h4 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 6px", color: "#1f2937" }}>{locale === "ar" ? "الحسابات المرتبطة" : "Linked Accounts"}</h4>
+              <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>{locale === "ar" ? "ربط حساباتك الاجتماعية لتسهيل عملية تسجيل الدخول لاحقاً" : "Link your social accounts to easily sign in later"}</p>
+            </div>
+            
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 4 }}>
+              {/* Google Link Option */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 18px",
+                borderRadius: 14,
+                border: "1.5px solid #E2E8F0",
+                background: "#F9FAFB",
+                flex: "1 1 200px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                  </svg>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#374151" }}>Google</span>
+                </div>
+                {user?.google_id ? (
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#166534",
+                    background: "#dcfce7",
+                    padding: "4px 10px",
+                    borderRadius: 12,
+                  }}>
+                    {locale === "ar" ? "مرتبط" : "Linked"}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSocialLink("google")}
+                    disabled={linkingLoading === "google"}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: "#2E7D32",
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "background 0.2s",
+                    }}
+                  >
+                    {linkingLoading === "google" ? (locale === "ar" ? "جاري..." : "Linking...") : (locale === "ar" ? "ربط" : "Link")}
+                  </button>
+                )}
+              </div>
+
+              {/* Facebook Link Option */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 18px",
+                borderRadius: 14,
+                border: "1.5px solid #1877F2",
+                background: "#eff6ff",
+                flex: "1 1 200px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <svg width="20" height="20" fill="#1877F2" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1e3a8a" }}>Facebook</span>
+                </div>
+                {user?.facebook_id ? (
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#1e3a8a",
+                    background: "#dbeafe",
+                    padding: "4px 10px",
+                    borderRadius: 12,
+                  }}>
+                    {locale === "ar" ? "مرتبط" : "Linked"}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSocialLink("facebook")}
+                    disabled={linkingLoading === "facebook"}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: "#1877F2",
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "background 0.2s",
+                    }}
+                  >
+                    {linkingLoading === "facebook" ? (locale === "ar" ? "جاري..." : "Linking...") : (locale === "ar" ? "ربط" : "Link")}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

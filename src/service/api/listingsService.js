@@ -36,7 +36,11 @@ const listingsService = {
    * @param {object|FormData} data
    */
   create: (data) => {
-    return axiosClient.post(FARMER_ENDPOINT, data);
+    return axiosClient.post(FARMER_ENDPOINT, data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
   },
 
   /**
@@ -47,7 +51,11 @@ const listingsService = {
   update: (id, data) => {
     if (data instanceof FormData) {
       data.append("_method", "PUT");
-      return axiosClient.post(`${FARMER_ENDPOINT}/${id}`, data);
+      return axiosClient.post(`${FARMER_ENDPOINT}/${id}`, data, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
     }
     return axiosClient.put(`${FARMER_ENDPOINT}/${id}`, data);
   },

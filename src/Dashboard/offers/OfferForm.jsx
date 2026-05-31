@@ -17,6 +17,28 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+function parseBilingual(text) {
+  if (!text) return { ar: "", en: "" };
+  const arMatch = text.match(/\[ar:(.*?)\]/);
+  const enMatch = text.match(/\[en:(.*?)\]/);
+  
+  if (!arMatch && !enMatch) {
+    return { ar: text.trim(), en: "" };
+  }
+  
+  return {
+    ar: arMatch ? arMatch[1].trim() : "",
+    en: enMatch ? enMatch[1].trim() : ""
+  };
+}
+
+function encodeBilingual(ar, en) {
+  let result = "";
+  if (ar) result += `[ar:${ar.trim()}]`;
+  if (en) result += `[en:${en.trim()}]`;
+  return result;
+}
+
 export default function OfferForm() {
   const { locale, direction } = useLanguage();
   const isRTL = direction === "rtl";
@@ -36,8 +58,10 @@ export default function OfferForm() {
 
   // Form State
   const [formData, setFormData] = useState({
-    name: "",
-    description: "",
+    name_ar: "",
+    name_en: "",
+    description_ar: "",
+    description_en: "",
     discount_type: "PERCENTAGE",
     discount_value: "",
     starts_at: "",
@@ -61,9 +85,9 @@ export default function OfferForm() {
   const fetchMyListings = async () => {
     setLoadingListings(true);
     try {
-      const res = await listingsService.getMine();
+      const res = await listingsService.getAll();
       if (res.success) {
-        setAvailableListings(res.data || []);
+        setAvailableListings(res.data.data || res.data || []);
       }
     } catch (err) {
       console.error("Failed to load listings", err);
@@ -72,26 +96,40 @@ export default function OfferForm() {
     }
   };
 
+  const [isWideBanner, setIsWideBanner] = useState(false);
+
   const fetchOffer = async () => {
     try {
       const res = await offersService.getById(id);
       if (res.success && res.data.offer) {
         const offer = res.data.offer;
         setImagePreview(offer.image_url);
-          setFormData({
-            name: offer.name,
-            description: offer.description || "",
-            discount_type: offer.discount_type,
-            discount_value: offer.discount_value,
-            starts_at: offer.starts_at ? offer.starts_at.substring(0, 16) : "",
-            ends_at: offer.ends_at ? offer.ends_at.substring(0, 16) : "",
-            is_active: offer.is_active,
-            listing_ids: (offer.listings || []).map(l => l.id)
-          });
-          if (offer.images && offer.images.length > 0) {
-            setGalleryPreviews(offer.images.map(img => getImageUrl(img.image_path)));
-          }
+        
+        let desc = offer.description || "";
+        if (desc.includes("#wide")) {
+          setIsWideBanner(true);
+          desc = desc.replace("#wide", "").trim();
         }
+
+        const parsedName = parseBilingual(offer.name || "");
+        const parsedDesc = parseBilingual(desc || "");
+
+        setFormData({
+          name_ar: parsedName.ar,
+          name_en: parsedName.en,
+          description_ar: parsedDesc.ar,
+          description_en: parsedDesc.en,
+          discount_type: offer.discount_type,
+          discount_value: offer.discount_value,
+          starts_at: offer.starts_at ? offer.starts_at.substring(0, 16) : "",
+          ends_at: offer.ends_at ? offer.ends_at.substring(0, 16) : "",
+          is_active: offer.is_active,
+          listing_ids: (offer.listings || []).map(l => l.id)
+        });
+        if (offer.images && offer.images.length > 0) {
+          setGalleryPreviews(offer.images.map(img => getImageUrl(img.image_path)));
+        }
+      }
     } catch (err) {
       toast.error(locale === "ar" ? "فشل تحميل العرض" : "Failed to load offer");
       navigate("/dashboard/offers");
@@ -103,6 +141,15 @@ export default function OfferForm() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 10240 * 1024) {
+        toast.error(
+          locale === "ar"
+            ? "حجم الصورة كبير جداً! يجب ألا يتجاوز حجم الصورة 10 ميجابايت."
+            : "Image size is too large! The image must not exceed 10MB."
+        );
+        e.target.value = "";
+        return;
+      }
       setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result);
@@ -122,6 +169,15 @@ export default function OfferForm() {
 
   const handleGalleryChange = (e) => {
     const files = Array.from(e.target.files);
+    const oversizedFiles = files.filter(f => f.size > 10240 * 1024);
+    if (oversizedFiles.length > 0) {
+      toast.error(
+        locale === "ar"
+          ? "بعض الصور كبيرة جداً! يجب ألا تتجاوز أي صورة في المعرض 10 ميجابايت."
+          : "Some images are too large! No gallery image can exceed 10MB."
+      );
+      return;
+    }
     setGalleryImages(prev => [...prev, ...files]);
     
     const newPreviews = files.map(file => URL.createObjectURL(file));
@@ -135,16 +191,43 @@ export default function OfferForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.name_ar.trim() || !formData.name_en.trim()) {
+      toast.error(locale === "ar" ? "اسم العرض مطلوب باللغتين" : "Offer name is required in both languages");
+      return;
+    }
     if (formData.listing_ids.length === 0) {
       toast.error(locale === "ar" ? "يجب اختيار منتج واحد على الأقل" : "Select at least one product");
+      return;
+    }
+    if (imageFile && imageFile.size > 10240 * 1024) {
+      toast.error(
+        locale === "ar"
+          ? "حجم الصورة كبير جداً! الحد الأقصى هو 10 ميجابايت."
+          : "The image must not be greater than 10MB."
+      );
+      return;
+    }
+    const oversizedGallery = galleryImages.some(f => f.size > 10240 * 1024);
+    if (oversizedGallery) {
+      toast.error(
+        locale === "ar"
+          ? "يوجد صور في المعرض تتجاوز حجم 10 ميجابايت."
+          : "Some gallery images exceed 10MB."
+      );
       return;
     }
 
     setSubmitting(true);
     try {
+      const finalName = encodeBilingual(formData.name_ar, formData.name_en);
+      let finalDesc = encodeBilingual(formData.description_ar, formData.description_en);
+      if (isWideBanner) {
+        finalDesc += " #wide";
+      }
+
       const data = new FormData();
-      data.append("name", formData.name);
-      data.append("description", formData.description);
+      data.append("name", finalName);
+      data.append("description", finalDesc);
       data.append("discount_type", formData.discount_type);
       data.append("discount_value", formData.discount_value);
       data.append("is_active", formData.is_active ? 1 : 0);
@@ -223,14 +306,26 @@ export default function OfferForm() {
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div>
-                <label className="dashboard-label">{locale === "ar" ? "اسم العرض" : "Offer Name"} *</label>
-                <input type="text" className="dashboard-input" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder={locale === "ar" ? "مثال: خصم الصيف الكبير" : "e.g. Summer Mega Discount"} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div>
+                  <label className="dashboard-label">{locale === "ar" ? "اسم العرض (بالعربية)" : "Offer Name (Arabic)"} *</label>
+                  <input type="text" className="dashboard-input" required value={formData.name_ar} onChange={(e) => setFormData({...formData, name_ar: e.target.value})} placeholder="مثال: خصم الصيف الكبير" />
+                </div>
+                <div>
+                  <label className="dashboard-label">{locale === "ar" ? "اسم العرض (بالإنجليزية)" : "Offer Name (English)"} *</label>
+                  <input type="text" className="dashboard-input" required value={formData.name_en} onChange={(e) => setFormData({...formData, name_en: e.target.value})} placeholder="e.g. Summer Mega Discount" />
+                </div>
               </div>
 
-              <div>
-                <label className="dashboard-label">{locale === "ar" ? "وصف العرض" : "Description"}</label>
-                <textarea className="dashboard-textarea" rows={3} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder={locale === "ar" ? "اكتب تفاصيل العرض هنا..." : "Write offer details here..."} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div>
+                  <label className="dashboard-label">{locale === "ar" ? "وصف العرض (بالعربية)" : "Description (Arabic)"}</label>
+                  <textarea className="dashboard-textarea" rows={3} value={formData.description_ar} onChange={(e) => setFormData({...formData, description_ar: e.target.value})} placeholder="اكتب تفاصيل العرض بالعربية هنا..." />
+                </div>
+                <div>
+                  <label className="dashboard-label">{locale === "ar" ? "وصف العرض (بالإنجليزية)" : "Description (English)"}</label>
+                  <textarea className="dashboard-textarea" rows={3} value={formData.description_en} onChange={(e) => setFormData({...formData, description_en: e.target.value})} placeholder="Write English offer details here..." />
+                </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -375,9 +470,21 @@ export default function OfferForm() {
           </div>
 
           <div className="dashboard-panel" style={{ padding: 20 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <input type="checkbox" id="offerActive" checked={formData.is_active} onChange={(e) => setFormData({...formData, is_active: e.target.checked})} style={{ width: 18, height: 18, accentColor: "#2E7D32" }} />
-              <label htmlFor="offerActive" style={{ fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{locale === "ar" ? "تفعيل العرض" : "Active Offer"}</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <input type="checkbox" id="offerActive" checked={formData.is_active} onChange={(e) => setFormData({...formData, is_active: e.target.checked})} style={{ width: 18, height: 18, accentColor: "#2E7D32" }} />
+                <label htmlFor="offerActive" style={{ fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{locale === "ar" ? "تفعيل العرض" : "Active Offer"}</label>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <input type="checkbox" id="offerWide" checked={isWideBanner} onChange={(e) => setIsWideBanner(e.target.checked)} style={{ width: 18, height: 18, accentColor: "#F97316" }} />
+                <label htmlFor="offerWide" style={{ fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                  {locale === "ar" ? "إبراز كبانر عريض (Wide Banner)" : "Highlight as Wide Banner"}
+                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 2, fontWeight: 400 }}>
+                    {locale === "ar" ? "يظهر في الأقسام السفلية الكبيرة" : "Shows in the large sections below"}
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
 

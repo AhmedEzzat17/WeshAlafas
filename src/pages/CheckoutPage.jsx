@@ -5,10 +5,13 @@ import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import checkoutService from "../service/api/checkoutService";
 import toast from "react-hot-toast";
+import { CheckoutFormSkeleton, CheckoutSummarySkeleton } from "../components/Skeleton";
 
 export default function CheckoutPage() {
   const { locale, direction } = useLanguage();
-  const { cartItems, cartTotal, cartCount, clearCart } = useCart();
+  const { cartItems: allCartItems, cartTotal, clearCart } = useCart();
+  const cartItems = allCartItems.filter(item => item.selected !== false);
+  const cartCount = cartItems.length;
   const { user, isAuthenticated } = useAuth();
   const isRTL = direction === "rtl";
   const navigate = useNavigate();
@@ -18,6 +21,12 @@ export default function CheckoutPage() {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderId, setOrderId] = useState(null);
   const [error, setError] = useState(null);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsPageLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -91,6 +100,7 @@ export default function CheckoutPage() {
       setIsProcessing(false);
       setOrderId(result.data?.id || Math.floor(Math.random() * 90000) + 10000);
       setOrderSuccess(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       toast.success(locale === "ar" ? "تم تأكيد طلبك بنجاح!" : "Order confirmed successfully!");
       if (clearCart) clearCart();
       
@@ -302,9 +312,19 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        <form onSubmit={handlePlaceOrder} className="checkout-layout" style={{ display: "flex", gap: "clamp(20px, 3vw, 32px)" }}>
+        {isPageLoading ? (
+          <div className="checkout-layout" style={{ display: "flex", gap: "clamp(20px, 3vw, 32px)", animation: "fadeIn 0.3s ease-out" }}>
+            <div className="checkout-left" style={{ flex: "1 1 65%", display: "flex", flexDirection: "column", gap: "clamp(16px, 3vw, 24px)" }}>
+              <CheckoutFormSkeleton />
+            </div>
+            <div className="checkout-right" style={{ flex: "1 1 35%", minWidth: 0 }}>
+              <CheckoutSummarySkeleton />
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handlePlaceOrder} className="checkout-layout" style={{ display: "flex", gap: "clamp(20px, 3vw, 32px)" }}>
 
-          {/* LEFT COLUMN */}
+            {/* LEFT COLUMN */}
           <div className="checkout-left" style={{ flex: "1 1 65%", display: "flex", flexDirection: "column", gap: "clamp(16px, 3vw, 24px)" }}>
 
             {/* 1. Shipping Details */}
@@ -603,6 +623,7 @@ export default function CheckoutPage() {
           </div>
 
         </form>
+        )}
       </div>
     </div>
   );

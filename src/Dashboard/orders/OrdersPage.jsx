@@ -102,13 +102,24 @@ export default function OrdersPage() {
     return statuses[status] || { labelAr: status, labelEn: status, color: "#6B7280", bg: "#F3F4F6", class: "info", icon: Package };
   };
 
+  const getTitle = (title) => {
+    if (!title) return "";
+    const arMatch = title.match(/\[ar:(.*?)\]/);
+    const enMatch = title.match(/\[en:(.*?)\]/);
+    if (arMatch || enMatch) {
+      return locale === "ar" ? (arMatch ? arMatch[1] : "") : (enMatch ? enMatch[1] : "");
+    }
+    return title;
+  };
+
   const filteredOrders = orders.filter(order => {
     const searchLower = searchQuery.toLowerCase();
+    const orderTitle = getTitle(order.listing?.title).toLowerCase();
     const matchesSearch = 
       order.id.toLowerCase().includes(searchLower) || 
-      order.listing?.title?.toLowerCase().includes(searchLower) ||
+      orderTitle.includes(searchLower) ||
       order.buyer_tenant?.name?.toLowerCase().includes(searchLower) ||
-      order.items?.some(item => item.listing?.title?.toLowerCase().includes(searchLower));
+      order.items?.some(item => getTitle(item.listing?.title).toLowerCase().includes(searchLower));
       
     const matchesStatus = statusFilter === "ALL" || order.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -221,8 +232,8 @@ export default function OrdersPage() {
                           <div>
                             <p style={{ fontWeight: 600, fontSize: 14 }}>
                               {order.items && order.items.length > 0 
-                                ? order.items[0].listing?.title 
-                                : order.listing?.title}
+                                ? getTitle(order.items[0].listing?.title) 
+                                : getTitle(order.listing?.title)}
                               {order.items?.length > 1 && (
                                 <span style={{ marginLeft: 8, background: "#F1F5F9", padding: "2px 6px", borderRadius: 6, fontSize: 10, color: "#475569" }}>
                                   +{order.items.length - 1}
