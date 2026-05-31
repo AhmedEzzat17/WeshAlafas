@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logo.png";
 import authBg from "../assets/auth-bg.png";
+import toast from "react-hot-toast";
+import { loginWithGoogle, loginWithFacebook } from "../utils/socialAuth";
 
 /* ====== SVG Icons ====== */
 const GoogleIcon = () => (
@@ -60,9 +62,65 @@ const LockIcon = () => (
 
 export default function LoginPage() {
   const { direction } = useLanguage();
-  const { login, loading } = useAuth();
+  const { login, loginWithSocial, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect");
   const isRTL = direction === "rtl";
+
+  const handleGoogleLogin = () => {
+    loginWithGoogle(
+      async (accessToken) => {
+        const result = await loginWithSocial("google", accessToken);
+        handleSocialLoginResult("google", accessToken, result);
+      },
+      (error) => {
+        console.error("Google Auth error:", error);
+        toast.error(error?.message || (isRTL ? "فشل الاتصال بجوجل" : "Google connection failed"));
+      }
+    );
+  };
+
+  const handleFacebookLogin = () => {
+    loginWithFacebook(
+      async (accessToken) => {
+        const result = await loginWithSocial("facebook", accessToken);
+        handleSocialLoginResult("facebook", accessToken, result);
+      },
+      (error) => {
+        console.error("Facebook Auth error:", error);
+        toast.error(error?.message || (isRTL ? "فشل الاتصال بفيسبوك" : "Facebook connection failed"));
+      }
+    );
+  };
+
+  const handleSocialLoginResult = (provider, accessToken, result) => {
+    if (result.success) {
+      if (result.registrationCompleted) {
+        toast.success(isRTL ? "تم تسجيل الدخول بنجاح!" : "Login successful!");
+        const userRole = result.user?.role?.toUpperCase();
+        if (redirect) {
+          navigate(redirect);
+        } else if (userRole === "ADMIN" || userRole === "FARMER") {
+          navigate("/dashboard");
+        } else {
+          navigate("/");
+        }
+      } else {
+        toast.success(isRTL ? "تم التحقق من الحساب. يرجى إكمال التسجيل." : "Account verified. Please complete your registration.");
+        navigate("/complete-profile", {
+          state: {
+            provider,
+            accessToken,
+            socialDetails: result.socialDetails,
+          },
+        });
+      }
+    } else {
+      const msg = result.error || (isRTL ? "فشل تسجيل الدخول الاجتماعي" : "Social login failed");
+      toast.error(msg);
+    }
+  };
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -82,13 +140,21 @@ export default function LoginPage() {
 
     const result = await login({ email, password });
     if (result.success) {
-      if (result.user?.role === "admin") {
+      toast.success(isRTL ? "تم تسجيل الدخول بنجاح!" : "Login successful!");
+      
+      const userRole = result.user?.role?.toUpperCase();
+      
+      if (redirect) {
+        navigate(redirect);
+      } else if (userRole === "ADMIN" || userRole === "FARMER") {
         navigate("/dashboard");
       } else {
         navigate("/");
       }
     } else {
-      setError(result.error || (isRTL ? "البريد الإلكتروني أو كلمة المرور غير صحيحة" : "Invalid email or password"));
+      const msg = result.error || (isRTL ? "البريد الإلكتروني أو كلمة المرور غير صحيحة" : "Invalid email or password");
+      setError(msg);
+      toast.error(msg);
     }
   };
 
@@ -410,6 +476,8 @@ export default function LoginPage() {
                 }}
               >
                 <button
+                  type="button"
+                  onClick={handleGoogleLogin}
                   className="auth-social-btn"
                   style={{
                     display: "flex",
@@ -430,6 +498,8 @@ export default function LoginPage() {
                   Google
                 </button>
                 <button
+                  type="button"
+                  onClick={handleFacebookLogin}
                   className="auth-social-btn"
                   style={{
                     display: "flex",

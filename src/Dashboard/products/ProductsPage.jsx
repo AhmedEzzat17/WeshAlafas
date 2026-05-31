@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDashboardData } from "../shared/DashboardDataContext";
@@ -8,21 +8,27 @@ export default function ProductsPage() {
   const { locale, direction } = useLanguage();
   const isRTL = direction === "rtl";
   const navigate = useNavigate();
-  const { products, deleteProduct, cropsLoading, fetchCrops } = useDashboardData();
+  const { products, deleteProduct, loading, fetchListings, categories: apiCategories } = useDashboardData();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
 
-  const allCategories = [
-    { en: "all", ar: "الكل" },
-    { en: "Fruits", ar: "فواكه" },
-    { en: "Vegetables", ar: "خضروات" },
-    { en: "Grains & Crops", ar: "حبوب ومحاصيل" },
-  ];
+  const allCategories = useMemo(() => {
+    const core = [{ en: "all", ar: "الكل" }];
+    const fromApi = apiCategories.map(cat => ({
+      en: cat.nameEn,
+      ar: cat.nameAr,
+      slug: cat.slug,
+      id: cat.id
+    }));
+    return [...core, ...fromApi];
+  }, [apiCategories]);
 
   const filteredProducts = products.filter((prod) => {
     const q = searchQuery.toLowerCase();
     const matchesSearch = prod.nameEn.toLowerCase().includes(q) || prod.nameAr.includes(searchQuery);
-    const matchesCategory = filterCategory === "all" || prod.categoryEn === filterCategory;
+    const matchesCategory = filterCategory === "all" || 
+      String(prod.categoryId) === String(filterCategory) || 
+      String(prod.rootCategoryId) === String(filterCategory);
     return matchesSearch && matchesCategory;
   });
 
@@ -50,8 +56,8 @@ export default function ProductsPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="dashboard-btn dashboard-btn--outline" onClick={() => fetchCrops()} title={locale === "ar" ? "تحديث" : "Refresh"} style={{ padding: "8px 12px", borderRadius: 10 }}>
-            <RefreshCw size={18} className={cropsLoading ? "spin-icon" : ""} />
+          <button className="dashboard-btn dashboard-btn--outline" onClick={() => fetchListings()} title={locale === "ar" ? "تحديث" : "Refresh"} style={{ padding: "8px 12px", borderRadius: 10 }}>
+            <RefreshCw size={18} className={loading ? "spin-icon" : ""} />
           </button>
           <button className="dashboard-btn dashboard-btn--primary" onClick={() => navigate("/dashboard/products/add")}>
             <Plus size={18} />
@@ -69,16 +75,19 @@ export default function ProductsPage() {
           <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={locale === "ar" ? "بحث عن منتج..." : "Search products..."} className="dashboard-input" style={{ paddingLeft: isRTL ? 16 : 44, paddingRight: isRTL ? 44 : 16 }} />
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {allCategories.map((cat) => (
-            <button key={cat.en} onClick={() => setFilterCategory(cat.en)} style={{ padding: "8px 16px", borderRadius: 10, border: filterCategory === cat.en ? "1px solid #2E7D32" : "1px solid #E2E8F0", background: filterCategory === cat.en ? "rgba(46,125,50,0.08)" : "transparent", color: filterCategory === cat.en ? "#2E7D32" : "#64748B", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}>
-              {locale === "ar" ? cat.ar : cat.en}
-            </button>
-          ))}
+          {allCategories.map((cat) => {
+            const catId = cat.en === "all" ? "all" : cat.id;
+            return (
+              <button key={catId} onClick={() => setFilterCategory(catId)} style={{ padding: "8px 16px", borderRadius: 10, border: filterCategory === catId ? "1px solid #2E7D32" : "1px solid #E2E8F0", background: filterCategory === catId ? "rgba(46,125,50,0.08)" : "transparent", color: filterCategory === catId ? "#2E7D32" : "#64748B", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}>
+                {locale === "ar" ? cat.ar : cat.en}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Loading State */}
-      {cropsLoading && products.length === 0 && (
+      {loading && products.length === 0 && (
         <div className="dashboard-panel" style={{ padding: "60px 20px", textAlign: "center" }}>
           <div style={{ width: 40, height: 40, border: "3px solid #E2E8F0", borderTopColor: "#2E7D32", borderRadius: "50%", animation: "spin 0.7s linear infinite", margin: "0 auto 16px" }} />
           <p style={{ color: "#94A3B8", fontSize: 14 }}>{locale === "ar" ? "جاري تحميل المنتجات..." : "Loading products..."}</p>
@@ -86,7 +95,7 @@ export default function ProductsPage() {
       )}
 
       {/* Table */}
-      {(!cropsLoading || products.length > 0) && (
+      {(!loading || products.length > 0) && (
         <div className="dashboard-panel" style={{ overflowX: "auto" }}>
           <table className="dashboard-table">
             <thead>
@@ -147,7 +156,7 @@ export default function ProductsPage() {
             </tbody>
           </table>
 
-          {filteredProducts.length === 0 && !cropsLoading && (
+          {filteredProducts.length === 0 && !loading && (
             <div className="dashboard-empty">
               <div className="dashboard-empty-icon"><Package size={36} /></div>
               <h3 className="dashboard-empty-title">{locale === "ar" ? "لا توجد منتجات" : "No products found"}</h3>

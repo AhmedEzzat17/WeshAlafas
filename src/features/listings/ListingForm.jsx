@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
+import { useDashboardData } from "../../Dashboard/shared/DashboardDataContext";
 import listingsService from "../../service/api/listingsService";
 import cropsService from "../../service/api/cropsService";
+import toast from "react-hot-toast";
 
 export default function ListingForm() {
   const { id } = useParams();
@@ -10,6 +12,7 @@ export default function ListingForm() {
   const navigate = useNavigate();
   const { locale, direction } = useLanguage();
   const isRTL = direction === "rtl";
+  const { refreshProducts } = useDashboardData();
 
   const [loading, setLoading] = useState(false);
   const [crops, setCrops] = useState([]);
@@ -69,11 +72,31 @@ export default function ListingForm() {
   };
 
   const handleImageChange = (e) => {
-    setImages(Array.from(e.target.files));
+    const files = Array.from(e.target.files);
+    const oversizedFiles = files.filter(f => f.size > 10240 * 1024);
+    if (oversizedFiles.length > 0) {
+      toast.error(
+        locale === "ar"
+          ? "بعض الصور كبيرة جداً! يجب ألا تتجاوز أي صورة 10 ميجابايت."
+          : "Some images are too large! No image can exceed 10MB."
+      );
+      e.target.value = "";
+      return;
+    }
+    setImages(files);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const oversized = images.some(f => f.size > 10240 * 1024);
+    if (oversized) {
+      toast.error(
+        locale === "ar"
+          ? "يوجد صور تتجاوز حجم 10 ميجابايت."
+          : "Some images exceed 10MB."
+      );
+      return;
+    }
     setLoading(true);
     setErrors({});
 
@@ -101,7 +124,8 @@ export default function ListingForm() {
       }
 
       if (res.success) {
-        alert(locale === "ar" ? "تم الحفظ بنجاح!" : "Saved successfully!");
+        if (refreshProducts) await refreshProducts();
+        toast.success(locale === "ar" ? "تم حفظ العرض بنجاح!" : "Listing saved successfully!");
         navigate("/dashboard/my-listings");
       } else {
         throw res;
@@ -110,8 +134,9 @@ export default function ListingForm() {
       console.error(err);
       if (err.errors) {
         setErrors(err.errors);
+        toast.error(locale === "ar" ? "يرجى تصحيح الأخطاء في النموذج" : "Please correct the errors in the form");
       } else {
-        alert(err.message || "An error occurred");
+        toast.error(err.message || "An error occurred");
       }
     } finally {
       setLoading(false);

@@ -10,20 +10,31 @@ export default function ProductForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(id);
-  const { getProductById, addProduct, updateProduct, categories } = useDashboardData();
+  const { getProductById, addProduct, updateProduct, crops } = useDashboardData();
 
   const existing = isEditing ? getProductById(id) : null;
 
   const [form, setForm] = useState(() => {
     if (existing) {
       return {
-        nameAr: existing.nameAr, nameEn: existing.nameEn,
-        descAr: existing.descAr || "", descEn: existing.descEn || "",
-        price: String(existing.price), stock: String(existing.stock),
-        categoryEn: existing.categoryEn, categoryAr: existing.categoryAr,
+        nameEn: existing.nameEn,
+        descEn: existing.descriptionEn || "",
+        descAr: existing.descriptionAr || "",
+        price: String(existing.price),
+        stock: String(existing.quantity || 0),
+        cropId: existing.cropId,
+        qualityGrade: existing.qualityGrade || "A",
       };
     }
-    return { nameAr: "", nameEn: "", descAr: "", descEn: "", price: "", stock: "", categoryEn: "Fruits", categoryAr: "فواكه" };
+    return {
+      nameEn: "",
+      descEn: "",
+      descAr: "",
+      price: "",
+      stock: "",
+      cropId: crops.length > 0 ? crops[0].id : "",
+      qualityGrade: "A"
+    };
   });
 
   const [saving, setSaving] = useState(false);
@@ -34,31 +45,21 @@ export default function ProductForm() {
     return null;
   }
 
-  const handleCategoryChange = (e) => {
-    const catEn = e.target.value;
-    const cat = categories.find((c) => c.nameEn === catEn);
-    setForm((p) => ({ ...p, categoryEn: catEn, categoryAr: cat?.nameAr || catEn }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!form.nameEn.trim() && !form.nameAr.trim()) return;
+
+    if (!form.cropId) {
+      setError(locale === "ar" ? "يرجى اختيار صنف" : "Please select a crop");
+      return;
+    }
 
     setSaving(true);
-    const data = { ...form, price: parseFloat(form.price) || 0, stock: parseInt(form.stock) || 0 };
-
     try {
       if (isEditing) {
-        const result = await updateProduct(Number(id), data);
-        if (result && !result.success) {
-          console.warn("API update failed, saved locally:", result.error);
-        }
+        await updateProduct(id, form);
       } else {
-        const result = await addProduct(data);
-        if (result && !result.success) {
-          console.warn("API create failed, saved locally:", result.error);
-        }
+        await addProduct(form);
       }
       navigate("/dashboard/products");
     } catch (err) {
@@ -78,15 +79,14 @@ export default function ProductForm() {
         </button>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: "#1a1a1a", marginBottom: 4 }}>
-            {isEditing ? (locale === "ar" ? "تعديل المنتج" : "Edit Product") : (locale === "ar" ? "إضافة منتج جديد" : "Add New Product")}
+            {isEditing ? (locale === "ar" ? "تعديل الإدراج" : "Edit Listing") : (locale === "ar" ? "إضافة إدراج جديد" : "Add New Listing")}
           </h1>
           <p style={{ fontSize: 14, color: "#94A3B8" }}>
-            {isEditing ? (locale === "ar" ? "قم بتعديل بيانات المنتج" : "Update product details") : (locale === "ar" ? "أدخل بيانات المنتج الجديد" : "Enter new product details")}
+            {isEditing ? (locale === "ar" ? "قم بتعديل بيانات العرض الخاص بك" : "Update your listing details") : (locale === "ar" ? "أدخل بيانات المحصول الذي تود عرضه" : "Enter details for the crop you want to list")}
           </p>
         </div>
       </div>
 
-      {/* Error */}
       {error && (
         <div style={{ padding: "12px 16px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626", fontSize: 13, fontWeight: 500, marginBottom: 18 }}>
           {error}
@@ -98,45 +98,60 @@ export default function ProductForm() {
           <div className="dashboard-panel-header">
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <Package size={20} color="#2E7D32" />
-              <h3 className="dashboard-panel-title">{locale === "ar" ? "معلومات المنتج" : "Product Information"}</h3>
+              <h3 className="dashboard-panel-title">{locale === "ar" ? "معلومات المحصول" : "Crop Information"}</h3>
             </div>
           </div>
           <div className="dashboard-panel-body" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
               <div>
-                <label className="dashboard-label">{locale === "ar" ? "الاسم بالعربية" : "Arabic Name"} *</label>
-                <input className="dashboard-input" value={form.nameAr} onChange={(e) => setForm((p) => ({ ...p, nameAr: e.target.value }))} required />
+                <label className="dashboard-label">{locale === "ar" ? "اختر المحصول" : "Select Crop"} *</label>
+                <select
+                  className="dashboard-select"
+                  value={form.cropId}
+                  onChange={(e) => setForm(p => ({ ...p, cropId: e.target.value }))}
+                  required
+                >
+                  <option value="">{locale === "ar" ? "اختر صنفاً..." : "Select a crop..."}</option>
+                  {crops.map((c) => (
+                    <option key={c.id} value={c.id}>{locale === "ar" ? c.nameAr : c.nameEn}</option>
+                  ))}
+                </select>
               </div>
               <div>
-                <label className="dashboard-label">{locale === "ar" ? "الاسم بالإنجليزية" : "English Name"} *</label>
-                <input className="dashboard-input" value={form.nameEn} onChange={(e) => setForm((p) => ({ ...p, nameEn: e.target.value }))} required />
+                <label className="dashboard-label">{locale === "ar" ? "جودة المنتج" : "Quality Grade"} *</label>
+                <select
+                  className="dashboard-select"
+                  value={form.qualityGrade}
+                  onChange={(e) => setForm(p => ({ ...p, qualityGrade: e.target.value }))}
+                  required
+                >
+                  <option value="A+">A+ (Premium)</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                </select>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20 }}>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
               <div>
                 <label className="dashboard-label">{locale === "ar" ? "السعر (ج.م)" : "Price (EGP)"} *</label>
                 <input className="dashboard-input" type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))} required />
               </div>
               <div>
-                <label className="dashboard-label">{locale === "ar" ? "المخزون" : "Stock"} *</label>
+                <label className="dashboard-label">{locale === "ar" ? "الكمية المتاحة" : "Available Quantity"} *</label>
                 <input className="dashboard-input" type="number" min="0" value={form.stock} onChange={(e) => setForm((p) => ({ ...p, stock: e.target.value }))} required />
               </div>
-              <div>
-                <label className="dashboard-label">{locale === "ar" ? "الصنف" : "Category"}</label>
-                <select className="dashboard-select" value={form.categoryEn} onChange={handleCategoryChange}>
-                  {categories.filter((c) => c.status === "active").map((c) => (
-                    <option key={c.id} value={c.nameEn}>{locale === "ar" ? c.nameAr : c.nameEn}</option>
-                  ))}
-                </select>
-              </div>
             </div>
+
             <div>
-              <label className="dashboard-label">{locale === "ar" ? "الوصف بالعربية" : "Arabic Description"}</label>
-              <textarea className="dashboard-textarea" value={form.descAr} onChange={(e) => setForm((p) => ({ ...p, descAr: e.target.value }))} rows={3} />
+              <label className="dashboard-label">{locale === "ar" ? "عنوان العرض (اختياري)" : "Listing Title (Optional)"}</label>
+              <input className="dashboard-input" value={form.nameEn} onChange={(e) => setForm((p) => ({ ...p, nameEn: e.target.value }))} placeholder={locale === "ar" ? "مثال: طماطم طازجة من المزرعة" : "e.g. Fresh farm-picked tomatoes"} />
             </div>
+
             <div>
-              <label className="dashboard-label">{locale === "ar" ? "الوصف بالإنجليزية" : "English Description"}</label>
-              <textarea className="dashboard-textarea" value={form.descEn} onChange={(e) => setForm((p) => ({ ...p, descEn: e.target.value }))} rows={3} />
+              <label className="dashboard-label">{locale === "ar" ? "تفاصيل إضافية" : "Additional Details"}</label>
+              <textarea className="dashboard-textarea" value={form.descEn} onChange={(e) => setForm((p) => ({ ...p, descEn: e.target.value }))} rows={3} placeholder={locale === "ar" ? "معلومات حول التخزين، النقل، إلخ..." : "Storage info, transport details, etc..."} />
             </div>
           </div>
         </div>
@@ -149,7 +164,7 @@ export default function ProductForm() {
             {saving ? <Loader size={18} className="spin-icon" /> : <Save size={18} />}
             {saving
               ? (locale === "ar" ? "جاري الحفظ..." : "Saving...")
-              : isEditing ? (locale === "ar" ? "حفظ التعديلات" : "Save Changes") : (locale === "ar" ? "إضافة المنتج" : "Add Product")}
+              : isEditing ? (locale === "ar" ? "حفظ التعديلات" : "Save Changes") : (locale === "ar" ? "نشر العرض" : "Publish Listing")}
           </button>
         </div>
         <style>{`.spin-icon { animation: spin 1s linear infinite; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>

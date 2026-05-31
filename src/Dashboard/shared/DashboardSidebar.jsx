@@ -2,6 +2,8 @@ import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
+import { useEffect } from "react";
+import { ordersService, negotiationsService } from "../../service/api";
 import {
   LayoutDashboard,
   Layers,
@@ -12,18 +14,49 @@ import {
   ChevronRight,
   ShoppingCart,
   Globe,
+  LogOut,
+  Gavel,
+  Sprout,
+  BarChart3,
+  Tag,
 } from "lucide-react";
 
 export default function DashboardSidebar({ isCollapsed, onToggle }) {
   const { locale, direction } = useLanguage();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const isRTL = direction === "rtl";
   const [showWebsiteModal, setShowWebsiteModal] = useState(false);
+  const [counts, setCounts] = useState({ orders: 0, negotiations: 0 });
 
   const role = user?.role?.toUpperCase() || "";
-  const isAdmin = role === "ADMIN" || role === "COMPANY" || user?.email === "admin@admin.com" || user?.email === "admin@gmail.com";
+  const isAdmin = role === "ADMIN" || user?.email === "admin@admin.com" || user?.email === "admin@gmail.com";
   const isFarmer = role === "FARMER";
+  const isTrader = role === "TRADER" || role === "COMPANY";
+
+  useEffect(() => {
+    fetchCounts();
+  }, [location.pathname]);
+
+  const fetchCounts = async () => {
+    try {
+      const [ordersRes, negRes] = await Promise.all([
+        ordersService.getAll(),
+        isAdmin ? negotiationsService.getAll() : (isFarmer ? negotiationsService.getReceived() : negotiationsService.getSent())
+      ]);
+
+      if (ordersRes.success) {
+        const pendingOrders = ordersRes.data.filter(o => o.status === 'PENDING_PAYMENT' || o.status === 'PAID').length;
+        setCounts(prev => ({ ...prev, orders: pendingOrders }));
+      }
+      if (negRes.success) {
+        const activeNegs = negRes.data.filter(n => n.status === 'OPEN').length;
+        setCounts(prev => ({ ...prev, negotiations: activeNegs }));
+      }
+    } catch (err) {
+      console.error("Failed to fetch counts", err);
+    }
+  };
 
   const navItems = [];
 
@@ -49,28 +82,72 @@ export default function DashboardSidebar({ isCollapsed, onToggle }) {
     //   labelAr: "المنتجات",
     //   labelEn: "Products",
     // });
-    // navItems.push({
-    //   path: "/dashboard/users",
-    //   icon: Users,
-    //   labelAr: "المستخدمين",
-    //   labelEn: "Users",
-    // });
+    navItems.push({
+      path: "/dashboard/categories",
+      icon: Layers,
+      labelAr: "التصنيفات",
+      labelEn: "Categories",
+    });
     navItems.push({
       path: "/dashboard/crops",
-      icon: Layers,
+      icon: Sprout,
       labelAr: "المحاصيل",
       labelEn: "Crops",
     });
+    navItems.push({
+      path: "/dashboard/users",
+      icon: Users,
+      labelAr: "المستخدمين",
+      labelEn: "Users",
+    });
   }
 
-  if (isFarmer || isAdmin) { // Admins might want to test as well, or just Farmer
+  // if (isFarmer || isTrader || isAdmin) {
+  //   navItems.push({
+  //     path: "/dashboard/reports",
+  //     icon: BarChart3,
+  //     labelAr: "التقارير",
+  //     labelEn: "Reports",
+  //   });
+ //  }
+
+  if (isFarmer || isAdmin) {
     navItems.push({
       path: "/dashboard/my-listings",
       icon: Package,
-      labelAr: "إدارة العروض",
+      labelAr: "إدارة المنتجات",
       labelEn: "Manage Listings",
     });
+    navItems.push({
+      path: "/dashboard/offers",
+      icon: Tag,
+      labelAr: "العروض الترويجية",
+      labelEn: "Offers & Deals",
+    });
   }
+
+  if (isFarmer || isTrader || isAdmin) {
+    const orderLabelAr = isAdmin ? "إدارة الطلبات" : (isFarmer ? "إدارة المبيعات" : "طلباتي");
+    const orderLabelEn = isAdmin ? "Orders Management" : (isFarmer ? "Sales Management" : "My Orders");
+    
+    navItems.push({
+      path: "/dashboard/orders",
+      icon: ShoppingCart,
+      labelAr: orderLabelAr,
+      labelEn: orderLabelEn,
+      badge: counts.orders
+    });
+  }
+
+  // if (isFarmer || isTrader || isAdmin) {
+  //   navItems.push({
+  //     path: "/dashboard/negotiations",
+  //     icon: Gavel,
+  //     labelAr: "المفاوضات",
+  //     labelEn: "Negotiations",
+  //     badge: counts.negotiations
+  //   });
+  // }
 
   // Back to Website option
   navItems.push({
@@ -90,18 +167,29 @@ export default function DashboardSidebar({ isCollapsed, onToggle }) {
     });
   }
 
+  navItems.push({
+    path: "/logout",
+    icon: LogOut,
+    labelAr: "تسجيل الخروج",
+    labelEn: "Logout",
+    isAction: true,
+  });
+
   const getUserInitial = () => {
-    if (!user?.fullName) return "A";
-    return user.fullName.charAt(0).toUpperCase();
+    if (!user?.name) return "A";
+    return user.name.charAt(0).toUpperCase();
   };
 
   const getUserName = () => {
-    if (!user?.fullName) return locale === "ar" ? "أحمد عزت" : "Ahmed Ezzat";
-    return user.fullName;
+    if (!user?.name) return locale === "ar" ? "مستخدم جديد" : "New User";
+    return user.name;
   };
 
   const getUserRole = () => {
-    return locale === "ar" ? "مدير النظام" : "System Admin";
+    if (isAdmin) return locale === "ar" ? "مدير النظام" : "System Admin";
+    if (isFarmer) return locale === "ar" ? "مزارع" : "Farmer";
+    if (isTrader) return locale === "ar" ? "تاجر" : "Trader";
+    return role;
   };
 
   return (
@@ -301,6 +389,48 @@ export default function DashboardSidebar({ isCollapsed, onToggle }) {
             );
           }
 
+          if (item.isAction) {
+            return (
+              <div
+                key="logout-action"
+                onClick={() => {
+                  if (window.confirm(locale === "ar" ? "هل أنت متأكد من تسجيل الخروج؟" : "Are you sure you want to logout?")) {
+                    logout();
+                  }
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: isCollapsed ? "12px" : "12px 16px",
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "#EF4444",
+                  background: "transparent",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  justifyContent: isCollapsed ? "center" : "flex-start",
+                  flexShrink: 0,
+                  marginTop: "12px" // Small gap instead of auto if not last
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(239,68,68,0.05)";
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                }}
+              >
+                <Icon size={20} style={{ flexShrink: 0 }} />
+                {!isCollapsed && (
+                  <span style={{ whiteSpace: "nowrap" }}>
+                    {locale === "ar" ? item.labelAr : item.labelEn}
+                  </span>
+                )}
+              </div>
+            );
+          }
+
           const isActive = item.end
             ? location.pathname === item.path
             : location.pathname.startsWith(item.path);
@@ -359,9 +489,37 @@ export default function DashboardSidebar({ isCollapsed, onToggle }) {
               )}
               <Icon size={20} style={{ flexShrink: 0 }} />
               {!isCollapsed && (
-                <span style={{ whiteSpace: "nowrap" }}>
-                  {locale === "ar" ? item.labelAr : item.labelEn}
-                </span>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ whiteSpace: "nowrap" }}>
+                    {locale === "ar" ? item.labelAr : item.labelEn}
+                  </span>
+                  {item.badge > 0 && (
+                    <span style={{
+                      background: item.path.includes('orders') ? "#2E7D32" : "#3B82F6",
+                      color: "#fff",
+                      fontSize: 10,
+                      fontWeight: 800,
+                      padding: "2px 6px",
+                      borderRadius: 10,
+                      minWidth: 18,
+                      textAlign: "center"
+                    }}>
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
+              )}
+              {isCollapsed && item.badge > 0 && (
+                <div style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "#EF4444",
+                  border: "2px solid #fff"
+                }} />
               )}
             </NavLink>
           );

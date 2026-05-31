@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "../Navbar";
 import Footer from "../Footer/Footer";
+import FloatingCart from "../FloatingCart";
 
 /**
  * Layout Component
@@ -16,6 +17,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
+      <FloatingCart />
     </div>
   );
 }

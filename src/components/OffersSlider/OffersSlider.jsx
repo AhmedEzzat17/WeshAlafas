@@ -1,53 +1,12 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
+import { useDashboardData } from "../../Dashboard/shared/DashboardDataContext";
 import offerVeg from "../../assets/offer-vegetables.png";
 import offerFruit from "../../assets/offer-fruits.png";
 import offerBundle from "../../assets/offer-bundle.png";
 
-/* ====== Offer Data ====== */
-const offersData = [
-  {
-    id: 1,
-    image: offerVeg,
-    titleEn: "Fresh Basket",
-    titleAr: "سلة الطازج",
-    priceEn: "4090 EGP",
-    priceAr: "4090 ج.م",
-    featuresEn: ["Farm Fresh Daily", "Free Delivery", "5 kg Vegetables"],
-    featuresAr: ["طازج يومياً", "توصيل مجاني", "٥ كجم خضروات"],
-  },
-  {
-    id: 2,
-    image: offerFruit,
-    titleEn: "Fruit Paradise",
-    titleAr: "جنة الفواكه",
-    priceEn: "7090 EGP",
-    priceAr: "7090 ج.م",
-    featuresEn: ["Premium Fruits", "Seasonal Selection", "Quality Guaranteed"],
-    featuresAr: ["فواكه مميزة", "تشكيلة موسمية", "جودة مضمونة"],
-  },
-  {
-    id: 3,
-    image: offerBundle,
-    titleEn: "Family Bundle",
-    titleAr: "باقة العائلة",
-    priceEn: "5290 EGP",
-    priceAr: "5290 ج.م",
-    featuresEn: ["10 kg Mixed Produce", "Weekly Delivery", "Save More"],
-    featuresAr: ["١٠ كجم منتجات متنوعة", "توصيل أسبوعي", "وفر أكثر"],
-  },
-  {
-    id: 4,
-    image: offerBundle,
-    titleEn: "Family Bundle",
-    titleAr: "الباقة الكبرى",
-    priceEn: "5290 EGP",
-    priceAr: "5290 ج.م",
-    featuresEn: ["10 kg Mixed Produce", "Weekly Delivery", "Save More"],
-    featuresAr: ["١٠ كجم منتجات متنوعة", "توصيل أسبوعي", "وفر أكثر"],
-  },
-];
+/* ====== Offer Data (Removed fake data) ====== */
 
 /* ====== Arrow SVG ====== */
 const ArrowSvg = ({ direction }) => (
@@ -85,18 +44,70 @@ const CheckSvg = () => (
     />
   </svg>
 );
+function parseBilingual(text, locale) {
+  if (!text) return "";
+  const arMatch = text.match(/\[ar:(.*?)\]/);
+  const enMatch = text.match(/\[en:(.*?)\]/);
+  
+  if (!arMatch && !enMatch) {
+    return text.trim();
+  }
+  
+  if (locale === "en") {
+    return enMatch ? enMatch[1].trim() : (arMatch ? arMatch[1].trim() : text.trim());
+  }
+  // Default to Arabic
+  return arMatch ? arMatch[1].trim() : text.trim();
+}
 
 export default function OffersSlider() {
-  const { direction } = useLanguage();
+  const { direction, locale } = useLanguage();
+  const { offers: apiOffers } = useDashboardData();
   const isRTL = direction === "rtl";
   const sliderRef = useRef(null);
   const autoPlayRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(2);
-  const [isPaused, setIsPaused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [currentX, setCurrentX] = useState(0);
+
+  const getSliderOffers = () => {
+    if (!apiOffers || apiOffers.length === 0) return [];
+    
+    const wide = apiOffers.filter(o => (o.description || "").includes("#wide"));
+    const slider = apiOffers.filter(o => !(o.description || "").includes("#wide"));
+
+    // If there are more than 2 wide offers, push the rest to the slider
+    if (wide.length > 2) {
+      slider.push(...wide.slice(2));
+    }
+    
+    return slider;
+  };
+
+  const displayOffers = getSliderOffers().map(o => {
+    let cleanDesc = o.description || "";
+    if (cleanDesc.includes("#wide")) {
+      cleanDesc = cleanDesc.replace("#wide", "").trim();
+    }
+    const parsedNameAr = parseBilingual(o.name || "", "ar") || "عرض خاص";
+    const parsedNameEn = parseBilingual(o.name || "", "en") || "Special Offer";
+    const parsedDescAr = parseBilingual(cleanDesc, "ar");
+    const parsedDescEn = parseBilingual(cleanDesc, "en");
+
+    return {
+      id: o.id,
+      image: o.image_url || o.image || offerBundle,
+      titleEn: parsedNameEn,
+      titleAr: parsedNameAr,
+      priceEn: o.discount_value ? (o.discount_type === "PERCENTAGE" ? `${o.discount_value}% OFF` : `${o.discount_value} EGP OFF`) : "",
+      priceAr: o.discount_value ? (o.discount_type === "PERCENTAGE" ? `خصم ${o.discount_value}%` : `خصم ${o.discount_value} ج.م`) : "",
+      featuresEn: parsedDescEn ? [parsedDescEn] : [],
+      featuresAr: parsedDescAr ? [parsedDescAr] : [],
+      originalOffer: o
+    };
+  });
 
   /* Calculate how many cards visible */
   const calcVisible = useCallback(() => {
@@ -113,7 +124,7 @@ export default function OffersSlider() {
     return () => window.removeEventListener("resize", onResize);
   }, [calcVisible]);
 
-  const maxIndex = Math.max(0, offersData.length - visibleCount);
+  const maxIndex = Math.max(0, displayOffers.length - visibleCount);
 
   const goNext = useCallback(() => {
     setCurrentIndex((i) => (i >= maxIndex ? 0 : i + 1));
@@ -123,23 +134,18 @@ export default function OffersSlider() {
     setCurrentIndex((i) => (i <= 0 ? maxIndex : i - 1));
   }, [maxIndex]);
 
-  /* Auto-play: slides every 3.5 seconds */
+  /* Auto-play: slides every 4 seconds */
   useEffect(() => {
-    if (isPaused) return;
+    if (isDragging) return;
     autoPlayRef.current = setInterval(() => {
       goNext();
-    }, 3500);
+    }, 4000);
     return () => clearInterval(autoPlayRef.current);
-  }, [isPaused, goNext]);
-
-  /* Pause on hover, resume on leave */
-  const handleMouseEnter = () => !isDragging && setIsPaused(true);
-  const handleMouseLeave = () => !isDragging && setIsPaused(false);
+  }, [isDragging, currentIndex, goNext]);
 
   /* Drag Handlers */
   const handleDragStart = (e) => {
     setIsDragging(true);
-    setIsPaused(true);
     const clientX = e.type.includes("mouse") ? e.pageX : e.touches[0].clientX;
     setStartX(clientX);
     setCurrentX(clientX);
@@ -154,7 +160,6 @@ export default function OffersSlider() {
   const handleDragEnd = () => {
     if (!isDragging) return;
     setIsDragging(false);
-    setIsPaused(false);
     const diff = currentX - startX;
     if (Math.abs(diff) > 20) {
       if (isRTL) {
@@ -201,8 +206,6 @@ export default function OffersSlider() {
         overflow: "hidden",
         position: "relative",
       }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       {/* Decorative background shapes */}
       <div
@@ -292,7 +295,6 @@ export default function OffersSlider() {
           .offers-slider-col { width: 100% !important; }
         }
       `}</style>
-
       <div
         className="max-w-[1920px] w-full mx-auto px-4 sm:px-8 md:px-12 lg:px-16"
         style={{ position: "relative", zIndex: 1 }}
@@ -322,8 +324,6 @@ export default function OffersSlider() {
                 marginBottom: 24,
               }}
             >
-              {/* <div style={{ width: 28, height: 3, background: "#A5D6A7", borderRadius: 3 }} />
-              <div style={{ width: 14, height: 3, background: "#A5D6A7", borderRadius: 3 }} /> */}
               <span
                 style={{
                   fontSize: "clamp(11px, 1.2vw, 14px)",
@@ -391,11 +391,9 @@ export default function OffersSlider() {
                 borderBottom: "3px solid #A5D6A7",
               }}
               onMouseEnter={(e) => {
-                // e.currentTarget.style.borderBottomColor = "#A5D6A7";
                 e.currentTarget.style.transform = "translateX(6px)";
               }}
               onMouseLeave={(e) => {
-                // e.currentTarget.style.borderBottomColor = "transparent";
                 e.currentTarget.style.transform = "translateX(0)";
               }}
             >
@@ -412,296 +410,305 @@ export default function OffersSlider() {
               minWidth: 0,
             }}
           >
-            {/* Navigation Arrows */}
-            <button
-              className="offer-nav-arrow"
-              onClick={() => {
-                setIsPaused(true);
-                goPrev();
-                setTimeout(() => setIsPaused(false), 5000);
-              }}
-              style={{
-                position: "absolute",
-                top: "50%",
-                [isRTL ? "right" : "left"]: -25,
-                transform: "translateY(-50%)",
-                zIndex: 10,
-                width: 50,
-                height: 50,
-                borderRadius: "50%",
-                border: "2px solid rgba(255,255,255,0.5)",
-                background: "rgba(255, 255, 255, 1)",
-                // backdropFilter: "blur(8px)",
-                color: "#2E7D32",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-                cursor: "pointer",
-              }}
-            >
-              <ArrowSvg direction="left" />
-            </button>
-
-            <button
-              className="offer-nav-arrow"
-              onClick={() => {
-                setIsPaused(true);
-                goNext();
-                setTimeout(() => setIsPaused(false), 5000);
-              }}
-              style={{
-                position: "absolute",
-                top: "50%",
-                [isRTL ? "left" : "right"]: -25,
-                transform: "translateY(-50%)",
-                zIndex: 10,
-                width: 50,
-                height: 50,
-                borderRadius: "50%",
-                border: "none",
-                background: "#fff",
-                color: "#2E7D32",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-              }}
-            >
-              <ArrowSvg direction="right" />
-            </button>
-
-            {/* Slider viewport */}
-            <div
-              style={{
-                overflow: "hidden",
-                borderRadius: 16,
-                padding: "6px 2px",
-                // cursor: isDragging ? "grabbing" : "grab",
-                userSelect: "none",
-                touchAction: "pan-y",
-              }}
-              onMouseDown={handleDragStart}
-              onMouseMove={handleDragMove}
-              onMouseUp={handleDragEnd}
-              onMouseLeave={handleDragEnd}
-              onTouchStart={handleDragStart}
-              onTouchMove={handleDragMove}
-              onTouchEnd={handleDragEnd}
-            >
-              <div
-                ref={sliderRef}
-                style={{
-                  display: "flex",
-                  gap: gapPx,
-                  transition: isDragging
-                    ? "none"
-                    : "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
-                  transform: `translateX(${
-                    isRTL
-                      ? getTranslateValue() +
-                        (isDragging ? currentX - startX : 0)
-                      : -getTranslateValue() +
-                        (isDragging ? currentX - startX : 0)
-                  }px)`,
-                }}
-              >
-                {offersData.map((offer) => (
-                  <div
-                    key={offer.id}
-                    style={{
-                      flex: `0 0 calc((100% - ${gapPx * (visibleCount - 1)}px) / ${visibleCount})`,
-                    }}
-                  >
-                    {/* === Card === */}
-                    <div
-                      className="offer-price-card"
-                      style={{
-                        borderRadius: 16,
-                        overflow: "hidden",
-                        background: "#fff",
-                        boxShadow: "0 8px 30px rgba(0,0,0,0.1)",
-                      }}
-                    >
-                      {/* Image */}
-                      <div
-                        style={{
-                          position: "relative",
-                          overflow: "hidden",
-                          height: "clamp(160px, 18vw, 220px)",
-                          background: "#ffffffff",
-                        }}
-                      >
-                        <img
-                          src={offer.image}
-                          alt={isRTL ? offer.titleAr : offer.titleEn}
-                          className="offer-card-img"
-                          draggable="false"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                            pointerEvents: "none",
-                          }}
-                        />
-                        {/* Price Badge */}
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: "80%",
-                            left: "50%",
-                            transform: "translate(-50%, -50%)",
-                            zIndex: 2,
-                            background: "#fff",
-                            borderRadius: 12,
-                            padding: "6px 24px",
-                            boxShadow: "0 4px 18px rgba(0,0,0,0.12)",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: "clamp(18px, 2vw, 24px)",
-                              fontWeight: 900,
-                              color: "#2E7D32",
-                            }}
-                          >
-                            {isRTL ? offer.priceAr : offer.priceEn}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Body */}
-                      <div
-                        style={{
-                          position: "relative",
-                          textAlign: "center",
-                          background: "#FAFFFE",
-                          borderBottom: "4px solid #2E7D32",
-                          padding:
-                            "clamp(32px, 3.5vw, 40px) clamp(20px, 2.5vw, 32px) clamp(50px, 6vw, 64px)",
-                        }}
-                      >
-                        <h4
-                          style={{
-                            fontSize: "clamp(16px, 1.8vw, 21px)",
-                            fontWeight: 800,
-                            color: "#1a1a1a",
-                            marginBottom: 16,
-                          }}
-                        >
-                          {isRTL ? offer.titleAr : offer.titleEn}
-                        </h4>
-
-                        {/* Divider */}
-                        <div
-                          style={{
-                            width: 55,
-                            height: 3,
-                            background:
-                              "linear-gradient(90deg, #2E7D32, #66BB6A)",
-                            borderRadius: 3,
-                            margin: "0 auto 20px",
-                          }}
-                        />
-
-                        {/* Features */}
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 16,
-                          }}
-                        >
-                          {(isRTL ? offer.featuresAr : offer.featuresEn).map(
-                            (f, i) => (
-                              <div
-                                key={i}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  fontSize: "clamp(12px, 1.3vw, 15px)",
-                                  color: "#4B5563",
-                                  fontWeight: 600,
-                                }}
-                              >
-                                <span>{f}</span>
-                                <CheckSvg />
-                              </div>
-                            ),
-                          )}
-                        </div>
-
-                        {/* CTA Button */}
-                        <Link
-                          to="/products?category=offers"
-                          className="offer-cta-btn"
-                          draggable="false"
-                          style={{
-                            position: "absolute",
-                            bottom: -25,
-                            left: "50%",
-                            transform: "translateX(-50%)",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 8,
-                            background:
-                              "linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%)",
-                            color: "#fff",
-                            fontSize: "clamp(13px, 1.3vw, 15px)",
-                            fontWeight: 700,
-                            padding: "14px 40px",
-                            borderRadius: 12,
-                            textDecoration: "none",
-                            whiteSpace: "nowrap",
-                            boxShadow: "0 6px 20px rgba(46,125,50,0.35)",
-                          }}
-                        >
-                          {isRTL ? "اطلب الآن" : "Order Now"}
-                        </Link>
-                      </div>
-
-                      {/* Spacer for button overlap */}
-                      <div style={{ height: 28, background: "#fff" }} />
-                    </div>
-                  </div>
-                ))}
+            {displayOffers.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px", background: "rgba(255,255,255,0.1)", borderRadius: 16 }}>
+                <h3 style={{ color: "#fff", fontSize: "24px", fontWeight: "bold" }}>
+                  {isRTL ? "ترقبوا عروضنا قريباً!" : "Stay tuned for our upcoming offers!"}
+                </h3>
               </div>
-            </div>
-
-            {/* Dots indicator */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 8,
-                marginTop: 20,
-              }}
-            >
-              {Array.from({ length: maxIndex + 1 }).map((_, i) => (
+            ) : (
+              <>
+                {/* Navigation Arrows */}
                 <button
-                  key={i}
+                  className="offer-nav-arrow"
                   onClick={() => {
-                    setCurrentIndex(i);
-                    setIsPaused(true);
-                    setTimeout(() => setIsPaused(false), 5000);
+                    goPrev();
                   }}
                   style={{
-                    width: currentIndex === i ? 28 : 10,
-                    height: 10,
-                    borderRadius: 5,
-                    border: "none",
-                    background:
-                      currentIndex === i ? "#fff" : "rgba(255,255,255,0.35)",
+                    position: "absolute",
+                    top: "50%",
+                    [isRTL ? "right" : "left"]: -25,
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    width: 50,
+                    height: 50,
+                    borderRadius: "50%",
+                    border: "2px solid rgba(255,255,255,0.5)",
+                    background: "rgba(255, 255, 255, 1)",
+                    color: "#2E7D32",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
                     cursor: "pointer",
-                    transition: "all 0.3s ease",
-                    padding: 0,
                   }}
-                />
-              ))}
-            </div>
+                >
+                  <ArrowSvg direction="left" />
+                </button>
+
+                <button
+                  className="offer-nav-arrow"
+                  onClick={() => {
+                    goNext();
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    [isRTL ? "left" : "right"]: -25,
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    width: 50,
+                    height: 50,
+                    borderRadius: "50%",
+                    border: "none",
+                    background: "#fff",
+                    color: "#2E7D32",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+                  }}
+                >
+                  <ArrowSvg direction="right" />
+                </button>
+
+                {/* Slider viewport */}
+                <div
+                  style={{
+                    overflow: "hidden",
+                    borderRadius: 16,
+                    padding: "6px 2px",
+                    userSelect: "none",
+                    touchAction: "pan-y",
+                  }}
+                  onMouseDown={handleDragStart}
+                  onMouseMove={handleDragMove}
+                  onMouseUp={handleDragEnd}
+                  onMouseLeave={handleDragEnd}
+                  onTouchStart={handleDragStart}
+                  onTouchMove={handleDragMove}
+                  onTouchEnd={handleDragEnd}
+                >
+                  <div
+                    ref={sliderRef}
+                    style={{
+                      display: "flex",
+                      gap: gapPx,
+                      alignItems: "stretch",
+                      transition: isDragging
+                        ? "none"
+                        : "transform 0.8s ease-in-out",
+                      transform: `translateX(${isRTL
+                          ? getTranslateValue() +
+                          (isDragging ? currentX - startX : 0)
+                          : -getTranslateValue() +
+                          (isDragging ? currentX - startX : 0)
+                        }px)`,
+                    }}
+                  >
+                    {displayOffers.map((offer) => (
+                      <div
+                        key={offer.id}
+                        style={{
+                          flex: `0 0 calc((100% - ${gapPx * (visibleCount - 1)}px) / ${visibleCount})`,
+                          display: "flex",
+                        }}
+                      >
+                        {/* === Card === */}
+                        <div
+                          className="offer-price-card"
+                          style={{
+                            borderRadius: 16,
+                            overflow: "hidden",
+                            background: "#fff",
+                            boxShadow: "0 8px 30px rgba(0,0,0,0.1)",
+                            display: "flex",
+                            flexDirection: "column",
+                            width: "100%",
+                          }}
+                        >
+                          {/* Image */}
+                          <div
+                            style={{
+                              position: "relative",
+                              overflow: "hidden",
+                              height: "clamp(160px, 18vw, 220px)",
+                              background: "#ffffffff",
+                            }}
+                          >
+                            <img
+                              src={offer.image}
+                              alt={isRTL ? offer.titleAr : offer.titleEn}
+                              className="offer-card-img"
+                              draggable="false"
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                pointerEvents: "none",
+                              }}
+                            />
+                            {/* Price Badge */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                top: "80%",
+                                left: "50%",
+                                transform: "translate(-50%, -50%)",
+                                zIndex: 2,
+                                background: "#fff",
+                                borderRadius: 12,
+                                padding: "6px 24px",
+                                boxShadow: "0 4px 18px rgba(0,0,0,0.12)",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: "clamp(18px, 2vw, 24px)",
+                                  fontWeight: 900,
+                                  color: "#2E7D32",
+                                }}
+                              >
+                                {isRTL ? offer.priceAr : offer.priceEn}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Body */}
+                          <div
+                            style={{
+                              position: "relative",
+                              textAlign: "center",
+                              background: "#FAFFFE",
+                              borderBottom: "4px solid #2E7D32",
+                              padding:
+                                "clamp(32px, 3.5vw, 40px) clamp(20px, 2.5vw, 32px) clamp(50px, 6vw, 64px)",
+                              flexGrow: 1,
+                              display: "flex",
+                              flexDirection: "column",
+                            }}
+                          >
+                            <h4
+                              style={{
+                                fontSize: "clamp(16px, 1.8vw, 21px)",
+                                fontWeight: 800,
+                                color: "#1a1a1a",
+                                marginBottom: 16,
+                              }}
+                            >
+                              {isRTL ? offer.titleAr : offer.titleEn}
+                            </h4>
+
+                            {/* Divider */}
+                            <div
+                              style={{
+                                width: 55,
+                                height: 3,
+                                background:
+                                  "linear-gradient(90deg, #2E7D32, #66BB6A)",
+                                borderRadius: 3,
+                                margin: "0 auto 20px",
+                              }}
+                            />
+
+                            {/* Features */}
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 16,
+                              }}
+                            >
+                              {(isRTL ? offer.featuresAr : offer.featuresEn).map(
+                                (f, i) => (
+                                  <div
+                                    key={i}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                      fontSize: "clamp(12px, 1.3vw, 15px)",
+                                      color: "#4B5563",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    <span>{f}</span>
+                                    <CheckSvg />
+                                  </div>
+                                ),
+                              )}
+                            </div>
+
+                            {/* CTA Button */}
+                            <Link
+                              to={`/products?offer_id=${offer.id}`}
+                              className="offer-cta-btn"
+                              draggable="false"
+                              style={{
+                                position: "absolute",
+                                bottom: -25,
+                                left: "50%",
+                                transform: "translateX(-50%)",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 8,
+                                background:
+                                  "linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%)",
+                                color: "#fff",
+                                fontSize: "clamp(13px, 1.3vw, 15px)",
+                                fontWeight: 700,
+                                padding: "14px 40px",
+                                borderRadius: 12,
+                                textDecoration: "none",
+                                whiteSpace: "nowrap",
+                                boxShadow: "0 6px 20px rgba(46,125,50,0.35)",
+                              }}
+                            >
+                              {isRTL ? "اطلب الآن" : "Order Now"}
+                            </Link>
+                          </div>
+
+                          {/* Spacer for button overlap */}
+                          <div style={{ height: 28, background: "#fff" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dots indicator */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: 8,
+                    marginTop: 20,
+                  }}
+                >
+                  {Array.from({ length: maxIndex + 1 }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setCurrentIndex(i);
+                      }}
+                      style={{
+                        width: currentIndex === i ? 28 : 10,
+                        height: 10,
+                        borderRadius: 5,
+                        border: "none",
+                        background:
+                          currentIndex === i ? "#fff" : "rgba(255,255,255,0.35)",
+                        cursor: "pointer",
+                        transition: "all 0.3s ease",
+                        padding: 0,
+                      }}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

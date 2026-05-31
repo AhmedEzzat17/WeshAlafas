@@ -1,56 +1,46 @@
 import { useLanguage } from "../context/LanguageContext";
 import { Link } from "react-router-dom";
-import vegetablesImg from "../assets/categories/vegetables.png";
-import fruitsImg from "../assets/categories/fruits.png";
-import grainsImg from "../assets/categories/grains.png";
-import offersImg from "../assets/categories/offers.png";
+import { useMemo } from "react";
+import { useDashboardData } from "../Dashboard/shared/DashboardDataContext";
+import { CategorySkeleton } from "../components/Skeleton";
+
+const gradients = [
+  { bg: "linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)", text: "#2E7D32" },
+  { bg: "linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)", text: "#E65100" },
+  { bg: "linear-gradient(135deg, #fef9e7 0%, #f9e79f 100%)", text: "#795548" },
+  { bg: "linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%)", text: "#C62828" },
+  { bg: "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)", text: "#1565C0" },
+  { bg: "linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)", text: "#6A1B9A" },
+];
 
 export default function CategoriesPage() {
   const { locale, direction } = useLanguage();
   const isRTL = direction === "rtl";
+  const { categories: apiCategories, loading } = useDashboardData();
 
-  const categories = [
-    {
-      id: "vegetables",
-      titleEn: "Vegetables",
-      titleAr: "الخضراوات",
-      descEn: "Fresh and organic vegetables delivered to your door",
-      descAr: "خضراوات طازجة وعضوية توصل لباب بيتك",
-      image: vegetablesImg,
-      gradient: "linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)",
-      accentColor: "#2E7D32",
-    },
-    {
-      id: "fruits",
-      titleEn: "Fruits",
-      titleAr: "الفواكه",
-      descEn: "Seasonal fruits picked at the peak of freshness",
-      descAr: "فواكه موسمية مقطوفة في قمة نضجها",
-      image: fruitsImg,
-      gradient: "linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)",
-      accentColor: "#E65100",
-    },
-    {
-      id: "grains",
-      titleEn: "Grains and Crops",
-      titleAr: "حبوب ومحاصيل",
-      descEn: "Premium quality grains and agricultural crops",
-      descAr: "حبوب ومحاصيل زراعية بأعلى جودة",
-      image: grainsImg,
-      gradient: "linear-gradient(135deg, #fef9e7 0%, #f9e79f 100%)",
-      accentColor: "#795548",
-    },
-    {
-      id: "offers",
-      titleEn: "Offers",
-      titleAr: "العروض",
-      descEn: "Exclusive deals and discounts on your favorites",
-      descAr: "عروض وخصومات حصرية على منتجاتك المفضلة",
-      image: offersImg,
-      gradient: "linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%)",
-      accentColor: "#C62828",
-    },
-  ];
+  const categories = useMemo(() => {
+    return apiCategories.map((cat, index) => {
+      const theme = gradients[index % gradients.length];
+      const isOffers = 
+        cat.slug === "offers" || 
+        cat.nameAr === "العروض" || 
+        cat.nameAr === "العروض الحصرية" || 
+        cat.nameAr === "العروض الحصريه" || 
+        String(cat.id) === "offers";
+
+      return {
+        id: isOffers ? "offers" : cat.id,       // Map to 'offers' to match the filter page!
+        slug: cat.slug,
+        titleEn: isOffers ? "Exclusive Offers" : (cat.nameEn || cat.name?.en || cat.name || "Category"),
+        titleAr: isOffers ? "العروض الحصرية" : (cat.nameAr || cat.name?.ar || cat.name || "قسم"),
+        descEn: isOffers ? "Exclusive deals and discounts on your favorites" : (cat.description?.en || cat.description || "Browse our fresh products in this category"),
+        descAr: isOffers ? "عروض وخصومات حصرية على منتجاتك المفضلة" : (cat.description?.ar || cat.description || "تصفح منتجاتنا الطازجة في هذا القسم"),
+        image: cat.image || null,
+        gradient: theme.bg,
+        accentColor: theme.text,
+      };
+    });
+  }, [apiCategories]);
 
   return (
     <section
@@ -197,17 +187,38 @@ export default function CategoriesPage() {
         </nav>
       </div>
 
-      {/* Categories Grid */}
+      {/* Categories Grid or States */}
       <div
         style={{
           maxWidth: 1200,
           margin: "0 auto",
           padding: "32px 24px 64px",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-          gap: 24,
         }}
       >
+        {loading ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: 24,
+            }}
+          >
+            {[1, 2, 3, 4, 5, 6].map(i => <CategorySkeleton key={i} />)}
+          </div>
+        ) : apiCategories.length === 0 ? (
+          <div className="flex items-center justify-center w-full py-20">
+            <div className="text-xl font-bold text-gray-500">
+              {isRTL ? "لا توجد أقسام حالياً." : "No categories found."}
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: 24,
+            }}
+          >
         {categories.map((cat) => (
           <Link
             to={`/products?category=${cat.id}`}
@@ -322,6 +333,8 @@ export default function CategoriesPage() {
             </div>
           </Link>
         ))}
+          </div>
+        )}
       </div>
     </section>
   );

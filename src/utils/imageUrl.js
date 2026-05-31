@@ -1,14 +1,14 @@
+import { STORAGE_BASE_URL } from '../service/api/axiosClient';
+
 export const getImageUrl = (path) => {
   if (!path) return "/images/fallback.png";
+  
+  // If it's already a full URL (http or https), return it
   if (path.startsWith("http")) return path;
   
-  // Clean path: remove leading slash if it exists
+  // For safety, handle relative paths by assuming they are from the local backend if not absolute
   const cleanPath = path.startsWith("/") ? path.substring(1) : path;
   
-  // If the path already starts with 'storage/', don't prepend it again
-  if (cleanPath.startsWith("storage/")) {
-    return `https://weshelafasapi.fikriti.com/${cleanPath}`;
-  }
-  
-  return `https://weshelafasapi.fikriti.com/storage/${cleanPath}`;
+  // Only fallback if the path doesn't look like an absolute URL
+  return `${STORAGE_BASE_URL}/${cleanPath}`;
 };

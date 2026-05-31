@@ -12,6 +12,7 @@
 import axiosClient from "./axiosClient";
 
 const ENDPOINT = "/listings";
+const FARMER_ENDPOINT = "/farmer/listings";
 
 const listingsService = {
   /**
@@ -27,7 +28,7 @@ const listingsService = {
    * @param {number|string} id
    */
   getById: (id) => {
-    return axiosClient.get(`${ENDPOINT}/${id}`);
+    return axiosClient.get(`${FARMER_ENDPOINT}/${id}`);
   },
 
   /**
@@ -35,7 +36,11 @@ const listingsService = {
    * @param {object|FormData} data
    */
   create: (data) => {
-    return axiosClient.post(ENDPOINT, data);
+    return axiosClient.post(FARMER_ENDPOINT, data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
   },
 
   /**
@@ -46,9 +51,13 @@ const listingsService = {
   update: (id, data) => {
     if (data instanceof FormData) {
       data.append("_method", "PUT");
-      return axiosClient.post(`${ENDPOINT}/${id}`, data);
+      return axiosClient.post(`${FARMER_ENDPOINT}/${id}`, data, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
     }
-    return axiosClient.put(`${ENDPOINT}/${id}`, data);
+    return axiosClient.put(`${FARMER_ENDPOINT}/${id}`, data);
   },
 
   /**
@@ -56,14 +65,14 @@ const listingsService = {
    * @param {number|string} id
    */
   delete: (id) => {
-    return axiosClient.delete(`${ENDPOINT}/${id}`);
+    return axiosClient.delete(`${FARMER_ENDPOINT}/${id}`);
   },
 
   /**
    * Get listings for the current authenticated user (my listings)
    */
   getMine: (params = {}) => {
-    return axiosClient.get(`${ENDPOINT}/my-profile`, { params });
+    return axiosClient.get("/me/listings", { params });
   },
 };
 

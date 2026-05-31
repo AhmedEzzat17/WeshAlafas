@@ -17,8 +17,11 @@
 
 import axios from "axios";
 
-// ─── Base URL ──────────────────────────────────────────────────────────────
-const API_BASE_URL = "https://weshelafasapi.fikriti.com/api/v1";
+// ─── Base Configuration (Single Source of Truth) ───────────────────────────
+// ⚠️ قم بتغيير الدومين هنا وسينعكس التغيير على جميع الـ APIs والصور في المشروع.
+export const DOMAIN_URL = import.meta.env.VITE_API_DOMAIN || "https://weshelafasapi.fikriti.com"; // <-- السب دومين الخاص بك
+export const API_BASE_URL = `${DOMAIN_URL}/api/v1`;
+export const STORAGE_BASE_URL = DOMAIN_URL; // Changed to point directly to the public root
 
 // ─── Create the instance ───────────────────────────────────────────────────
 const axiosClient = axios.create({
@@ -61,7 +64,15 @@ axiosClient.interceptors.request.use(
 
     // Let browser set Content-Type for FormData (includes boundary)
     if (config.data instanceof FormData) {
-      delete config.headers["Content-Type"];
+      if (config.headers) {
+        if (typeof config.headers.delete === 'function') {
+          config.headers.delete("Content-Type");
+          config.headers.delete("content-type");
+        } else {
+          delete config.headers["Content-Type"];
+          delete config.headers["content-type"];
+        }
+      }
     }
 
     return config;
@@ -95,11 +106,12 @@ axiosClient.interceptors.response.use(
           requestUrl.includes("/auth/login") ||
           requestUrl.includes("/auth/register");
         const wasSkippedAuth = error.config?.skipAuth === true;
+        const hadToken = !!localStorage.getItem("user");
 
         if (!isAuthEndpoint && !wasSkippedAuth) {
           // Expired/invalid token → clear session & redirect
           localStorage.removeItem("user");
-          if (window.location.pathname !== "/login") {
+          if (hadToken && window.location.pathname !== "/login") {
             window.location.href = "/login";
           }
         }

@@ -2,45 +2,64 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import { useDashboardData } from "../Dashboard/shared/DashboardDataContext";
 import ProductCard from "../components/ProductCard";
+import { negotiationsService } from "../service/api";
+import toast from "react-hot-toast";
 
 export default function ProductDetailsPage() {
   const { id } = useParams();
   const { locale, direction } = useLanguage();
   const { products: mockProducts } = useDashboardData();
   const { addToCart, removeFromCart, updateCartQuantity, toggleWishlist, isInWishlist, isInCart, getCartItemQuantity } = useCart();
+  const { user, isAuthenticated } = useAuth();
   const isRTL = direction === "rtl";
 
   const [quantity, setQuantity] = useState(() => {
-    const cartQty = getCartItemQuantity(parseInt(id));
+    const cartQty = getCartItemQuantity(id);
+    // Note: product is not yet defined here, so we default to 1.
+    // It will be updated in the useEffect below if needed.
     return cartQty > 0 ? cartQty : 1;
   });
   const [activeImage, setActiveImage] = useState(0);
+  const [showImageModal, setShowImageModal] = useState(false);
 
-  const product =
-    mockProducts.find((p) => p.id === parseInt(id)) || mockProducts[0];
+  const product = mockProducts.find((p) => String(p.id) === String(id));
 
   const [prevId, setPrevId] = useState(id);
   if (id !== prevId) {
     setActiveImage(0);
-    const cartQty = getCartItemQuantity(parseInt(id));
-    setQuantity(cartQty > 0 ? cartQty : 1);
+    const cartQty = getCartItemQuantity(id);
+    setQuantity(cartQty > 0 ? cartQty : (product?.minOrderQty || 1));
     setPrevId(id);
   }
+
+  // Ensure initial quantity respects minOrderQty
+  useEffect(() => {
+    if (product && quantity < (product.minOrderQty || 1)) {
+      setQuantity(product.minOrderQty || 1);
+    }
+  }, [product, quantity]);
+
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerPrice, setOfferPrice] = useState("");
+  const [isSubmittingOffer, setIsSubmittingOffer] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id]);
 
-  if (!product) return null;
+  if (!product) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">{locale === "ar" ? "المنتج غير موجود" : "Product not found"}</p>
+      </div>
+    );
+  }
 
-  const isSharedImageProduct = [5, 8].includes(product.id);
-  const sharedImage = "/images/product-grape-main1.jpg";
-
-  const mainImageSrc = isSharedImageProduct 
-    ? sharedImage 
-    : (product.images?.[activeImage] || product.image);
+  const isTrader = user?.role?.toUpperCase() === "TRADER";
+  const mainImageSrc = product.images?.[activeImage] || product.image;
 
   const relatedProducts = mockProducts
     .filter((p) => p.id !== product.id)
@@ -48,18 +67,37 @@ export default function ProductDetailsPage() {
   const isWished = isInWishlist(product.id);
   const inCart = isInCart(product.id);
 
-  // Taglines
-  const taglines = {
-    1: { en: "🍎 Farm Fresh • Organic", ar: "🍎 طازج من المزرعة • عضوي" },
-    2: { en: "🍓 Sweet & Juicy", ar: "🍓 حلو وعصيري" },
-    3: { en: "🍌 Energy Boost", ar: "🍌 طاقة ونشاط" },
-    4: { en: "🥑 Healthy Fats", ar: "🥑 دهون صحية" },
-    5: { en: "🍇 Seedless • Sweet", ar: "🍇 بدون بذور • حلو" },
-    6: { en: "🍊 Vitamin C • Fresh", ar: "🍊 فيتامين سي • طازج" },
-    7: { en: "🫐 Antioxidants", ar: "🫐 مضادات أكسدة" },
-    8: { en: "🥭 Tropical • Sweet", ar: "🥭 استوائي • حلو" },
+  // Taglines (keep dynamic)
+  const tagline = { en: "✨ Premium Selection", ar: "✨ اختيار متميز" };
+
+  const handleMakeOffer = async (e) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+        toast.error(isRTL ? "يرجى تسجيل الدخول أولاً" : "Please login first");
+        return;
+    }
+    if (!offerPrice || isNaN(offerPrice)) {
+      toast.error(isRTL ? "يرجى إدخال سعر صحيح" : "Please enter a valid price");
+      return;
+    }
+
+    setIsSubmittingOffer(true);
+    try {
+      const res = await negotiationsService.create({
+        listing_id: product.id,
+        current_offer_price: parseFloat(offerPrice),
+      });
+
+      if (res.success) {
+        toast.success(isRTL ? "تم إرسال عرضك بنجاح!" : "Your offer has been sent successfully!");
+        setShowOfferModal(false);
+      }
+    } catch (err) {
+      toast.error(err.message || (isRTL ? "فشل إرسال العرض" : "Failed to send offer"));
+    } finally {
+      setIsSubmittingOffer(false);
+    }
   };
-  const tagline = taglines[product.id] || { en: "✨ Premium", ar: "✨ ممتاز" };
 
   return (
     <div
@@ -67,6 +105,106 @@ export default function ProductDetailsPage() {
       dir={isRTL ? "rtl" : "ltr"}
       style={{ background: "#f8faf8", paddingBottom: 48 }}
     >
+      {/* Image Modal */}
+      {showImageModal && (
+        <div 
+          style={{ 
+            position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", 
+            background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", padding: 20,
+            opacity: 1, animation: "fadeIn 0.2s ease-out" 
+          }}
+          onClick={() => setShowImageModal(false)}
+        >
+          <div 
+            style={{ 
+              position: "relative", maxWidth: "95vw", maxHeight: "95vh", display: "flex", alignItems: "center", justifyContent: "center",
+              transform: "scale(1)", animation: "zoomIn 0.2s ease-out"
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setShowImageModal(false)}
+              style={{ 
+                position: "absolute", top: -16, right: isRTL ? "auto" : -16, left: isRTL ? -16 : "auto", 
+                background: "#fff", border: "none", color: "#333", cursor: "pointer", 
+                width: 40, height: 40, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)", zIndex: 10, transition: "transform 0.2s"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            <img 
+              src={mainImageSrc} 
+              alt={locale === "ar" ? product.nameAr : product.nameEn} 
+              style={{ 
+                maxWidth: "100%", maxHeight: "85vh", objectFit: "contain", 
+                borderRadius: 24, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+                background: "#fff"
+              }} 
+              onError={(e) => { e.target.src = "/images/fallback.png"; }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Negotiation Modal */}
+      {/* {showOfferModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", padding: 20 }}>
+          <div style={{ background: "#fff", borderRadius: 24, padding: "32px 28px", width: "100%", maxWidth: 420, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }} className="dashboard-animate-in">
+             <h3 style={{ fontSize: 20, fontWeight: 800, color: "#1a1a1a", marginBottom: 8, textAlign: "center" }}>
+               {locale === "ar" ? "تقديم عرض سعر" : "Make a Price Offer"}
+             </h3>
+             <p style={{ fontSize: 14, color: "#64748b", marginBottom: 24, textAlign: "center", lineHeight: 1.6 }}>
+               {locale === "ar" ? `السعر الحالي: ${product.price} ج.م` : `Current price: ${product.price} EGP`}
+               <br />
+               {locale === "ar" ? "أدخل السعر الذي ترغب في دفعه للمزارع." : "Enter the price you want to pay the farmer."}
+             </p>
+
+             <form onSubmit={handleMakeOffer}>
+               <div style={{ marginBottom: 24 }}>
+                 <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 8 }}>
+                   {locale === "ar" ? "سعرك المقترح" : "Your Proposed Price"}
+                 </label>
+                 <div style={{ position: "relative" }}>
+                   <input 
+                     type="number" 
+                     step="0.01"
+                     autoFocus
+                     value={offerPrice}
+                     onChange={(e) => setOfferPrice(e.target.value)}
+                     placeholder="0.00"
+                     style={{ width: "100%", height: 52, borderRadius: 12, border: "2px solid #E2E8F0", padding: isRTL ? "0 16px 0 50px" : "0 50px 0 16px", fontSize: 16, fontWeight: 700, outline: "none", transition: "border-color 0.2s" }}
+                     onFocus={(e) => e.target.style.borderColor = "#2E7D32"}
+                     onBlur={(e) => e.target.style.borderColor = "#E2E8F0"}
+                   />
+                   <span style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", [isRTL ? "left" : "right"]: 16, fontWeight: 700, color: "#94A3B8" }}>
+                     {locale === "ar" ? "ج.م" : "EGP"}
+                   </span>
+                 </div>
+               </div>
+
+               <div style={{ display: "flex", gap: 12 }}>
+                 <button 
+                   type="button"
+                   onClick={() => setShowOfferModal(false)}
+                   style={{ flex: 1, height: 50, borderRadius: 12, border: "none", background: "#F1F5F9", color: "#64748B", fontWeight: 700, cursor: "pointer" }}
+                 >
+                   {locale === "ar" ? "إلغاء" : "Cancel"}
+                 </button>
+                 <button 
+                   type="submit"
+                   disabled={isSubmittingOffer}
+                   style={{ flex: 1, height: 50, borderRadius: 12, border: "none", background: "#2E7D32", color: "#fff", fontWeight: 700, cursor: "pointer", boxShadow: "0 10px 15px -3px rgba(46,125,50,0.3)" }}
+                 >
+                   {isSubmittingOffer ? (locale === "ar" ? "جاري الإرسال..." : "Sending...") : (locale === "ar" ? "إرسال العرض" : "Send Offer")}
+                 </button>
+               </div>
+             </form>
+          </div>
+        </div>
+      )} */}
       {/* Breadcrumbs */}
       <nav
         className="flex items-center gap-2 flex-wrap text-gray-400 font-medium"
@@ -417,7 +555,7 @@ export default function ProductDetailsPage() {
                     className="font-semibold text-gray-700"
                     style={{ fontSize: 13, marginBottom: 6 }}
                   >
-                    {locale === "ar" ? "وحدة الكمية" : "Unit"}
+                    {locale === "ar" ? "الكمية المتاحة بالوحدة" : "Available Quantity per Unit"}
                   </h4>
                   <span
                     className="inline-flex items-center justify-center border-2 border-primary bg-primary/5 text-primary font-bold"
@@ -455,27 +593,49 @@ export default function ProductDetailsPage() {
                         fontSize: 18,
                         border: "none",
                         background: "none",
+                        opacity: quantity <= (product.minOrderQty || 1) ? 0.5 : 1,
+                        cursor: quantity <= (product.minOrderQty || 1) ? "not-allowed" : "pointer"
                       }}
+                      disabled={quantity <= (product.minOrderQty || 1)}
                       onClick={() => {
-                        const newQty = Math.max(1, quantity - 1);
+                        const newQty = Math.max((product.minOrderQty || 1), quantity - 1);
                         setQuantity(newQty);
                         if (inCart) updateCartQuantity(product.id, newQty);
                       }}
                     >
                       −
                     </button>
-                    <span
-                      className="flex items-center justify-center font-bold bg-gray-50"
+                    <input
+                      type="number"
+                      min={product.minOrderQty || 1}
+                      max={product.stock || 9999}
+                      value={quantity}
+                      onChange={(e) => {
+                        let val = parseInt(e.target.value);
+                        if (isNaN(val)) val = product.minOrderQty || 1;
+                        if (val > (product.stock || 9999)) {
+                          val = product.stock || 9999;
+                          toast.error(locale === "ar" ? `الحد الأقصى للكمية المتاحة هو ${val}` : `Maximum available quantity is ${val}`);
+                        }
+                        if (val < (product.minOrderQty || 1)) {
+                          val = product.minOrderQty || 1;
+                          toast.error(locale === "ar" ? `الحد الأدنى للطلب هو ${val}` : `Minimum order quantity is ${val}`);
+                        }
+                        setQuantity(val);
+                        if (inCart) updateCartQuantity(product.id, val);
+                      }}
+                      className="font-bold bg-gray-50 text-center"
                       style={{
-                        width: 44,
+                        width: 60,
                         height: "100%",
                         fontSize: 15,
+                        border: "none",
                         borderLeft: "2px solid #e8e8e8",
                         borderRight: "2px solid #e8e8e8",
+                        outline: "none",
+                        appearance: "textfield"
                       }}
-                    >
-                      {quantity}
-                    </span>
+                    />
                     <button
                       className="flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
                       style={{
@@ -484,8 +644,16 @@ export default function ProductDetailsPage() {
                         fontSize: 18,
                         border: "none",
                         background: "none",
+                        opacity: quantity >= (product.stock || 9999) ? 0.5 : 1,
+                        cursor: quantity >= (product.stock || 9999) ? "not-allowed" : "pointer"
                       }}
+                      disabled={quantity >= (product.stock || 9999)}
                       onClick={() => {
+                        const maxQty = product.stock || 9999;
+                        if (quantity >= maxQty) {
+                          toast.error(locale === "ar" ? `الحد الأقصى للكمية المتاحة هو ${maxQty}` : `Maximum available quantity is ${maxQty}`);
+                          return;
+                        }
                         const newQty = quantity + 1;
                         setQuantity(newQty);
                         if (inCart) updateCartQuantity(product.id, newQty);
@@ -494,11 +662,46 @@ export default function ProductDetailsPage() {
                       +
                     </button>
                   </div>
+                  {/* <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                    {product.minOrderQty > 1 && (
+                      <p style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 600, margin: 0 }}>
+                        {locale === "ar" ? `أقل كمية للطلب: ${product.minOrderQty}` : `Min order: ${product.minOrderQty}`}
+                      </p>
+                    )}
+                    {product.stock && product.stock !== 9999 && (
+                      <p style={{ fontSize: 12, color: "var(--color-primary)", fontWeight: 700, margin: 0 }}>
+                        {locale === "ar" ? `الكمية المتاحة: ${product.stock}` : `Available: ${product.stock}`}
+                      </p>
+                    )}ال
+                  </div> */}
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="flex mt-auto" style={{ gap: 10 }}>
+                {/* {isTrader && (
+                  <button
+                    className="flex items-center justify-center font-bold transition-all duration-300 hover:shadow-lg active:scale-[0.97] cursor-pointer bg-white text-[#2E7D32] border-2 border-[#2E7D32]"
+                    style={{
+                      height: 48,
+                      borderRadius: 12,
+                      fontSize: 15,
+                      padding: "0 24px",
+                      gap: 8,
+                    }}
+                    onClick={() => setShowOfferModal(true)}
+                  >
+                    <lord-icon
+                      src="/icons/fcyidnot.json"
+                      trigger="loop"
+                      delay="2000"
+                      colors="primary:#2E7D32"
+                      style={{ width: "24px", height: "24px" }}
+                    />
+                    {locale === "ar" ? "قدم عرض سعر" : "Make an Offer"}
+                  </button>
+                )} */}
+
                 <button
                   className={`flex-grow flex items-center justify-center font-bold transition-all duration-300 hover:shadow-xl active:scale-[0.97] cursor-pointer ${
                     inCart
@@ -643,8 +846,9 @@ export default function ProductDetailsPage() {
                 <img
                   src={mainImageSrc}
                   alt={locale === "ar" ? product.nameAr : product.nameEn}
-                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105 cursor-pointer"
                   style={{ borderRadius: 16 }}
+                  onClick={() => setShowImageModal(true)}
                   onError={(e) => {
                     e.target.src = "/images/fallback.png";
                   }}
@@ -652,7 +856,7 @@ export default function ProductDetailsPage() {
               </div>
 
               {/* Thumbnails */}
-              {product.images && product.images.length > 1 && !isSharedImageProduct && (
+              {product.images && product.images.length > 1 && (
                 <div
                   className="flex overflow-x-auto no-scrollbar pb-2"
                   style={{ gap: 8 }}
@@ -726,7 +930,7 @@ export default function ProductDetailsPage() {
                 onClick={() => {
                   document
                     .getElementById("related-slider")
-                    .scrollBy({ left: isRTL ? -250 : 250, behavior: "smooth" });
+                    .scrollBy({ left: 250, behavior: "smooth" });
                 }}
               >
                 <svg
@@ -757,7 +961,7 @@ export default function ProductDetailsPage() {
                 onClick={() => {
                   document
                     .getElementById("related-slider")
-                    .scrollBy({ left: isRTL ? 250 : -250, behavior: "smooth" });
+                    .scrollBy({ left: -250, behavior: "smooth" });
                 }}
               >
                 <svg

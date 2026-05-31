@@ -1,11 +1,34 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function CartPage() {
   const { locale, direction } = useLanguage();
-  const { cartItems, updateCartQuantity, removeFromCart, cartTotal, cartCount, cartTotalQuantity } = useCart();
+  const { isAuthenticated } = useAuth();
+  const {
+    cartItems,
+    updateCartQuantity,
+    removeFromCart,
+    cartTotal,
+    cartCount,
+    cartTotalQuantity,
+    toggleSelectItem,
+    toggleSelectAll
+  } = useCart();
   const isRTL = direction === "rtl";
+  const [searchParams] = useSearchParams();
+  const [showLoginWarning, setShowLoginWarning] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("login_required") === "true") {
+      setShowLoginWarning(true);
+    }
+  }, [searchParams]);
+
+  const allSelected = cartItems.length > 0 && cartItems.every((item) => item.selected !== false);
+  const selectedCount = cartItems.filter((item) => item.selected !== false).length;
 
   return (
     <div className="min-h-screen" dir={isRTL ? "rtl" : "ltr"} style={{ background: "#f8faf8", paddingBottom: 64 }}>
@@ -83,9 +106,175 @@ export default function CartPage() {
         ) : (
 
           /* ===== Cart with Items ===== */
-          <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: "clamp(16px, 3vw, 24px)" }}>
+          <>
+            {showLoginWarning && !isAuthenticated && (
+              <div
+                className="mb-6 bg-amber-50 text-amber-900 border border-amber-200 transition-all duration-300 success-wrap"
+                style={{
+                  borderRadius: 20,
+                  padding: "24px",
+                  boxShadow: "0 10px 30px rgba(245,158,11,0.08)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 16,
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Soft decorative background shape */}
+                <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%", background: "rgba(245,158,11,0.1)", zIndex: 0 }} />
+
+                <div className="flex items-start" style={{ gap: 16, position: "relative", zIndex: 1 }}>
+                  {/* Warning Icon SVG */}
+                  <div
+                    className="flex items-center justify-center shrink-0"
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      background: "#fef3c7",
+                      border: "1.5px solid #fde68a"
+                    }}
+                  >
+                    <svg width="24" height="24" fill="none" stroke="#d97706" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <h3
+                      className="font-bold text-amber-800"
+                      style={{ fontSize: "clamp(16px, 3vw, 19px)", marginBottom: 6 }}
+                    >
+                      {locale === "ar" ? "تسجيل الدخول مطلوب لإتمام العملية" : "Login Required to Complete the Process"}
+                    </h3>
+                    <p
+                      className="text-amber-700 font-medium"
+                      style={{ fontSize: "clamp(13px, 2.5vw, 15px)", lineHeight: 1.6, margin: 0 }}
+                    >
+                      {locale === "ar"
+                        ? "عذراً، يجب عليك تسجيل الدخول إلى حسابك أولاً لتتمكن من إتمام الطلب وتأكيد شراء المنتجات المحددة في السلة."
+                        : "Sorry, you must be logged in to your account first to complete the order and confirm purchasing the selected items in the cart."}
+                    </p>
+                  </div>
+
+                  {/* Close Button */}
+                  <button
+                    onClick={() => setShowLoginWarning(false)}
+                    className="text-amber-500 hover:text-amber-700 transition-colors cursor-pointer"
+                    style={{ background: "none", border: "none", padding: 4 }}
+                    aria-label={locale === "ar" ? "إغلاق" : "Close"}
+                  >
+                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap" style={{ gap: 12, paddingStart: 64, position: "relative", zIndex: 1 }}>
+                  {/* Primary Login Button */}
+                  <Link
+                    to="/login?redirect=/checkout"
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold transition-all duration-300 flex items-center justify-center hover:scale-[1.02] active:scale-[0.98]"
+                    style={{
+                      padding: "10px 24px",
+                      borderRadius: 12,
+                      fontSize: "clamp(13px, 2.3vw, 15px)",
+                      gap: 8,
+                      boxShadow: "0 4px 12px rgba(217,119,6,0.2)",
+                      textDecoration: "none"
+                    }}
+                  >
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    </svg>
+                    {locale === "ar" ? "تسجيل الدخول الآن" : "Log In Now"}
+                  </Link>
+
+                  {/* Secondary Register Button */}
+                  <Link
+                    to="/account-type"
+                    className="bg-white hover:bg-amber-100 text-amber-700 font-bold transition-all duration-300 flex items-center justify-center border border-amber-200"
+                    style={{
+                      padding: "10px 24px",
+                      borderRadius: 12,
+                      fontSize: "clamp(13px, 2.3vw, 15px)",
+                      gap: 8,
+                      textDecoration: "none"
+                    }}
+                  >
+                    {locale === "ar" ? "إنشاء حساب جديد" : "Create New Account"}
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: "clamp(16px, 3vw, 24px)" }}>
             {/* Cart Items Column */}
             <div className="lg:col-span-2" style={{ display: "flex", flexDirection: "column", gap: "clamp(10px, 2vw, 16px)" }}>
+              
+              {/* Select All Control Bar */}
+              <div
+                className="bg-white hover:shadow-md transition-all duration-300"
+                style={{
+                  borderRadius: 16,
+                  border: "1px solid #ececec",
+                  padding: "14px 20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <label
+                  className="flex items-center cursor-pointer select-none font-bold text-gray-700"
+                  style={{ gap: 12, fontSize: "clamp(14px, 2.5vw, 16px)" }}
+                >
+                  <div className="relative flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={(e) => toggleSelectAll(e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div
+                      className="flex items-center justify-center transition-all duration-200 border-2 rounded-md"
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderColor: allSelected ? "#2E7D32" : "#ccc",
+                        backgroundColor: allSelected ? "#2E7D32" : "transparent",
+                      }}
+                    >
+                      {allSelected && (
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span>{locale === "ar" ? "اختيار الكل" : "Select All"}</span>
+                </label>
+
+                <div
+                  className="text-gray-500 font-medium"
+                  style={{ fontSize: "clamp(13px, 2.3vw, 15px)" }}
+                >
+                  {locale === "ar"
+                    ? `تم تحديد (${selectedCount} من ${cartItems.length})`
+                    : `Selected (${selectedCount} of ${cartItems.length})`}
+                </div>
+              </div>
+
               {cartItems.map((item) => (
                 <div
                   key={item.id}
@@ -98,8 +287,47 @@ export default function CartPage() {
                     flexWrap: "wrap",
                     gap: "clamp(12px, 2.5vw, 20px)",
                     alignItems: "center",
+                    opacity: item.selected === false ? 0.75 : 1,
+                    transition: "opacity 0.3s, box-shadow 0.3s",
                   }}
                 >
+                  {/* Select Checkbox */}
+                  <div
+                    className="relative flex items-center justify-center shrink-0 cursor-pointer active:scale-95 transition-transform duration-200"
+                    onClick={() => toggleSelectItem(item.id)}
+                    style={{ width: 24, height: 24 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={item.selected !== false}
+                      onChange={() => {}} // toggling handled by click
+                      className="sr-only"
+                    />
+                    <div
+                      className="flex items-center justify-center transition-all duration-200 border-2 rounded-md"
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderColor: item.selected !== false ? "#2E7D32" : "#ccc",
+                        backgroundColor: item.selected !== false ? "#2E7D32" : "transparent",
+                      }}
+                    >
+                      {item.selected !== false && (
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
                   {/* Image */}
                   <Link
                     to={`/product/${item.id}`}
@@ -199,15 +427,20 @@ export default function CartPage() {
                         {item.quantity}
                       </span>
                       <button
-                        className="flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-primary transition-colors cursor-pointer"
+                        className="flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-primary transition-colors cursor-pointer disabled:opacity-40 disabled:hover:text-gray-500"
                         style={{
                           width: "clamp(34px, 7vw, 42px)",
                           height: "100%",
                           fontSize: "clamp(16px, 3vw, 20px)",
                           border: "none",
                           background: "none",
+                          cursor: item.quantity >= (item.stock || 9999) ? "not-allowed" : "pointer"
                         }}
-                        onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                        disabled={item.quantity >= (item.stock || 9999)}
+                        onClick={() => {
+                          const newQty = Math.min((item.stock || 9999), item.quantity + 1);
+                          updateCartQuantity(item.id, newQty);
+                        }}
                       >
                         +
                       </button>
@@ -361,38 +594,176 @@ export default function CartPage() {
                 </div>
 
                 {/* Checkout Button */}
-                <Link
-                  to="/checkout"
-                  className="w-full bg-primary hover:bg-primary-dark text-white font-bold transition-all duration-300 flex justify-center items-center cursor-pointer active:scale-[0.97]"
-                  style={{
-                    padding: "clamp(12px, 2.5vw, 16px) 16px",
-                    borderRadius: 14,
-                    fontSize: "clamp(14px, 2.8vw, 16px)",
-                    gap: 8,
-                    border: "none",
-                    boxShadow: "0 4px 16px rgba(46,125,50,0.25)",
-                    marginBottom: 12,
-                    textDecoration: "none"
-                  }}
-                >
-                  <lord-icon
-                    src="/icons/surjmvno.json"
-                    trigger="hover"
-                    colors="primary:#ffffff"
-                    style={{ width: "22px", height: "22px" }}
-                  />
-                  {locale === "ar" ? "إتمام الطلب" : "Proceed to Checkout"}
-                  <svg
-                    className={isRTL ? "rotate-180" : ""}
-                    style={{ width: 18, height: 18 }}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2.5}
-                    viewBox="0 0 24 24"
+                {selectedCount > 0 ? (
+                  isAuthenticated ? (
+                    <Link
+                      to="/checkout"
+                      className="w-full bg-primary hover:bg-primary-dark text-white font-bold transition-all duration-300 flex justify-center items-center cursor-pointer active:scale-[0.97]"
+                      style={{
+                        padding: "clamp(12px, 2.5vw, 16px) 16px",
+                        borderRadius: 14,
+                        fontSize: "clamp(14px, 2.8vw, 16px)",
+                        gap: 8,
+                        border: "none",
+                        boxShadow: "0 4px 16px rgba(46,125,50,0.25)",
+                        marginBottom: 12,
+                        textDecoration: "none"
+                      }}
+                    >
+                      <lord-icon
+                        src="/icons/surjmvno.json"
+                        trigger="hover"
+                        colors="primary:#ffffff"
+                        style={{ width: "22px", height: "22px" }}
+                      />
+                      {locale === "ar" ? "إتمام الطلب" : "Proceed to Checkout"}
+                      <svg
+                        className={isRTL ? "rotate-180" : ""}
+                        style={{ width: 18, height: 18 }}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setShowLoginWarning(true);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className="w-full bg-primary hover:bg-primary-dark text-white font-bold transition-all duration-300 flex justify-center items-center cursor-pointer active:scale-[0.97]"
+                      style={{
+                        padding: "clamp(12px, 2.5vw, 16px) 16px",
+                        borderRadius: 14,
+                        fontSize: "clamp(14px, 2.8vw, 16px)",
+                        gap: 8,
+                        border: "none",
+                        boxShadow: "0 4px 16px rgba(46,125,50,0.25)",
+                        marginBottom: 12,
+                      }}
+                    >
+                      <lord-icon
+                        src="/icons/surjmvno.json"
+                        trigger="hover"
+                        colors="primary:#ffffff"
+                        style={{ width: "22px", height: "22px" }}
+                      />
+                      {locale === "ar" ? "إتمام الطلب" : "Proceed to Checkout"}
+                      <svg
+                        className={isRTL ? "rotate-180" : ""}
+                        style={{ width: 18, height: 18 }}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </button>
+                  )
+                ) : (
+                  <div
+                    className="w-full bg-gray-200 text-gray-400 font-bold flex justify-center items-center cursor-not-allowed select-none"
+                    style={{
+                      padding: "clamp(12px, 2.5vw, 16px) 16px",
+                      borderRadius: 14,
+                      fontSize: "clamp(14px, 2.8vw, 16px)",
+                      gap: 8,
+                      marginBottom: 12,
+                    }}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </Link>
+                    <lord-icon
+                      src="/icons/surjmvno.json"
+                      trigger="hover"
+                      colors="primary:#9ca3af"
+                      style={{ width: "22px", height: "22px" }}
+                    />
+                    {locale === "ar" ? "إتمام الطلب" : "Proceed to Checkout"}
+                    <svg
+                      className={isRTL ? "rotate-180" : ""}
+                      style={{ width: 18, height: 18 }}
+                      fill="none"
+                      stroke="#9ca3af"
+                      strokeWidth={2.5}
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </div>
+                )}
+
+                {/* Login Required Warning Banner */}
+                {selectedCount > 0 && !isAuthenticated && (
+                  <div
+                    className="bg-blue-50 text-blue-800 font-medium"
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 12,
+                      fontSize: 13,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                      marginBottom: 12,
+                      border: "1px solid #dbeafe",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, color: "#2563eb" }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      <span style={{ fontWeight: 700 }}>
+                        {locale === "ar" ? "تسجيل الدخول مطلوب" : "Login Required"}
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12, color: "#1e40af", lineHeight: 1.5 }}>
+                      {locale === "ar"
+                        ? "يجب تسجيل الدخول إلى حسابك أولاً لتتمكن من تأكيد طلب الشراء وإتمام الدفع بنجاح."
+                        : "You must be logged in to your account first to complete the checkout and confirm payment."}
+                    </p>
+                    <Link
+                      to="/login?redirect=/checkout"
+                      style={{
+                        alignSelf: isRTL ? "flex-start" : "flex-end",
+                        color: "#2563eb",
+                        fontWeight: 700,
+                        fontSize: 12,
+                        textDecoration: "underline",
+                        marginTop: 4,
+                      }}
+                    >
+                      {locale === "ar" ? "سجل دخولك الآن ←" : "Sign in now →"}
+                    </Link>
+                  </div>
+                )}
+
+                {/* Warning Banner if nothing is selected */}
+                {selectedCount === 0 && (
+                  <div
+                    className="bg-amber-50 text-amber-700 font-medium"
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      fontSize: 13,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 12,
+                      border: "1px solid #fef3c7",
+                    }}
+                  >
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>
+                      {locale === "ar"
+                        ? "يرجى اختيار عنصر واحد على الأقل لإتمام الطلب"
+                        : "Please select at least one item to proceed"}
+                    </span>
+                  </div>
+                )}
 
                 {/* Continue Shopping */}
                 <Link
@@ -466,6 +837,7 @@ export default function CartPage() {
               </div>
             </div>
           </div>
+          </>
         )}
       </div>
 
