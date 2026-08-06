@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
-import logo from "../assets/Logo.png";
+import logo from "../assets/logo.png";
 import authBg from "../assets/auth-bg.png";
 
 /* ====== SVG Icons ====== */
