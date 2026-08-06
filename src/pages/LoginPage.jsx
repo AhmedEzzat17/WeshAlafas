@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
-import logo from "../assets/Logo.png";
+import logo from "../assets/logo.png";
 import authBg from "../assets/auth-bg.png";
 import toast from "react-hot-toast";
 import { loginWithGoogle, loginWithFacebook } from "../utils/socialAuth";
