@@ -51,7 +51,7 @@ export default function CartPage() {
         </div> */}
       </div>
 
-      <div className="max-w-[1600px] mx-auto" style={{ padding: "20px 16px" }}>
+      <div className="max-w-[1600px] mx-auto" style={{ padding: "20px 15px" }}>
         {cartItems.length === 0 ? (
           /* ===== Empty Cart ===== */
           <div
@@ -602,7 +602,7 @@ export default function CartPage() {
                       style={{
                         padding: "clamp(12px, 2.5vw, 16px) 16px",
                         borderRadius: 14,
-                        fontSize: "clamp(14px, 2.8vw, 16px)",
+                        fontSize: "clamp(14px, 2.7vw, 16px)",
                         gap: 8,
                         border: "none",
                         boxShadow: "0 4px 16px rgba(46,125,50,0.25)",
