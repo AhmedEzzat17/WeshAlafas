@@ -32,8 +32,8 @@ export default function Hero() {
   const slides = [
     {
       id: 1,
-      badgeAr: "أعلى جودة",
-      badgeEn: "Premium Quality",
+      // badgeAr: "أعلى جودة",
+      // badgeEn: "Premium Quality",
       title1: locale === "ar" ? "خضروات وفواكه طازجة" : "Fresh Vegetables",
       title2: locale === "ar" ? "من المزرعة لباب بيتك" : "& Fruits Delivered",
       subtitle:
@@ -49,8 +49,8 @@ export default function Hero() {
     },
     {
       id: 2,
-      badgeAr: "مقطوفة يومياً",
-      badgeEn: "Picked Daily",
+      // badgeAr: "مقطوفة يومياً",
+      // badgeEn: "Picked Daily",
       title1: locale === "ar" ? "محاصيل زراعية عضوية" : "Organic Farms",
       title2: locale === "ar" ? "غنية بالفيتامينات" : "100% Natural",
       subtitle:
@@ -66,8 +66,8 @@ export default function Hero() {
     },
     {
       id: 3,
-      badgeAr: "أسعار تنافسية",
-      badgeEn: "Best Prices",
+      // badgeAr: "أسعار تنافسية",
+      // badgeEn: "Best Prices",
       title1: locale === "ar" ? "قيمة ممتازة" : "Unbeatable Quality",
       title2: locale === "ar" ? "بأفضل الأسعار" : "& Amazing Prices",
       subtitle:
@@ -268,9 +268,9 @@ export default function Hero() {
                         >
                           {slide.badgeIcon}
                         </span>
-                        <span className="text-xs lg:text-sm whitespace-wrap" style={{ padding: "10px" }}>
+                        {/* <span className="text-xs lg:text-sm whitespace-wrap" style={{ padding: "10px" }}>
                           {locale === "ar" ? slide.badgeAr : slide.badgeEn}
-                        </span>
+                        </span> */}
                       </div>
                     </div>
                   </div>
