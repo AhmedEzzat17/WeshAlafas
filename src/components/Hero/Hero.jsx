@@ -152,12 +152,12 @@ export default function Hero() {
                   className={`flex-1 ${isRTL ? "text-right" : "text-left"} w-full pb-8 lg:pb-0`}
                 >
                   {/* Offer Badge / Small text */}
-                  <span
+                  {/* <span
                     className="inline-block bg-surface/10 text-accent border border-accent/30 rounded-full px-5 py-2 font-semibold uppercase tracking-wider mb-6 backdrop-blur-sm shadow-sm"
                     style={{ fontSize: 13, padding: "10px 20px" , color:"#F9A825" }}
                   >
                     {t(locale, "heroBadge")}
-                  </span>
+                  </span> */}
 
                   {/* Heading */}
                   <h1
