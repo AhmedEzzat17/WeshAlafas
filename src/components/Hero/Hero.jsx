@@ -43,7 +43,7 @@ export default function Hero() {
       bgImg: "/images/hero-bg.jpg",
       mainImg: "/images/hero-img-1.jpg",
       subImg: "/images/hero-img-2.jpg",
-      badgeIcon: "🥬",
+      // badgeIcon: "🥬",
       rotateMain: "rotate-3 hover:rotate-0",
       rotateSub: "-rotate-6 hover:rotate-3",
     },
@@ -60,7 +60,7 @@ export default function Hero() {
       bgImg: "/images/about-bg.jpg",
       mainImg: "/images/about-img-1.jpg",
       subImg: "/images/product-strawberry-1.jpg",
-      badgeIcon: "🍓",
+      // badgeIcon: "🍓",
       rotateMain: "-rotate-2 hover:rotate-1",
       rotateSub: "rotate-3 hover:-rotate-1",
     },
@@ -77,7 +77,7 @@ export default function Hero() {
       bgImg: "/images/product-apple-1.jpg",
       mainImg: "/images/product-orange-main.jpg",
       subImg: "/images/product-avocado-1.jpg",
-      badgeIcon: "🌾",
+      // badgeIcon: "🌾",
       rotateMain: "rotate-1 hover:-rotate-2",
       rotateSub: "-rotate-3 hover:rotate-2",
     },
@@ -253,7 +253,7 @@ export default function Hero() {
                     </div>
 
                     {/* Floating Decorative Badge */}
-                    <div
+                    {/* <div
                       className="absolute z-30 bg-surface text-primary-dark font-bold px-4 py-2 lg:px-5 lg:py-3 rounded-2xl shadow-xl border border-surface animate-bounce"
                       style={{
                         top: "10%",
@@ -268,12 +268,12 @@ export default function Hero() {
                         >
                           {slide.badgeIcon}
                         </span>
-                        {/* <span className="text-xs lg:text-sm whitespace-wrap" style={{ padding: "10px" }}>
+                        <span className="text-xs lg:text-sm whitespace-wrap" style={{ padding: "10px" }}>
                           {locale === "ar" ? slide.badgeAr : slide.badgeEn}
-                        </span> */}
+                        </span>
                       </div>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </SwiperSlide>
