@@ -272,8 +272,8 @@ export default function Hero() {
                           {locale === "ar" ? slide.badgeAr : slide.badgeEn}
                         </span>
                       </div>
-                    </div>
-                  </div> */}
+                    </div> */}
+                  </div>
                 </div>
               </div>
             </SwiperSlide>
